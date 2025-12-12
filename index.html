@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>背诵检查单 (完美存档版)</title>
+    <title>背诵检查单 (防消失修复版)</title>
     <style>
         :root {
             --bg-color: transparent;
@@ -35,6 +35,7 @@
             align-items: center;
         }
 
+        /* 仪表盘 */
         .dashboard {
             display: flex;
             flex-direction: column;
@@ -68,39 +69,11 @@
             font-variant-numeric: tabular-nums;
         }
 
-        .progress-section {
-            width: 100%;
-            margin: 10px 0;
-        }
-
-        .progress-info {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-
-        .progress-track {
-            width: 100%;
-            height: 8px;
-            background-color: var(--track-color);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            background-color: var(--accent-color);
-            border-radius: 4px;
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s;
-        }
-        
-        .progress-fill.completed {
-            background-color: var(--success-color);
-        }
+        .progress-section { width: 100%; margin: 10px 0; }
+        .progress-info { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 5px; font-weight: 500; }
+        .progress-track { width: 100%; height: 8px; background-color: var(--track-color); border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background-color: var(--accent-color); border-radius: 4px; transition: width 0.3s, background-color 0.3s; }
+        .progress-fill.completed { background-color: var(--success-color); }
 
         .controls { display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap; justify-content: center; }
 
@@ -117,20 +90,10 @@
 
         .btn-reset { background-color: #e0e0e0; color: #333; }
         
-        .btn-clear { 
-            background-color: #ffeaea; 
-            color: var(--danger-color); 
-            border: 1px solid transparent;
-        }
+        .btn-clear { background-color: #ffeaea; color: var(--danger-color); border: 1px solid transparent; }
         .btn-clear:hover::after { content: '(双击)'; font-size: 10px; margin-left: 3px; opacity: 0.7; }
 
-        .btn-generate { 
-            background-color: var(--accent-color); 
-            color: white; 
-            padding: 8px 20px; 
-            font-size: 14px;
-            margin-top: 10px;
-        }
+        .btn-generate { background-color: var(--accent-color); color: white; padding: 8px 20px; font-size: 14px; margin-top: 10px; }
 
         .input-section {
             width: 100%;
@@ -175,10 +138,7 @@
             border-radius: 6px;
             transition: all 0.2s ease;
         }
-        
-        .todo-item:hover {
-            background: rgba(0,0,0,0.03);
-        }
+        .todo-item:hover { background: rgba(0,0,0,0.03); }
 
         .todo-item input[type="checkbox"] {
             appearance: none;
@@ -195,21 +155,8 @@
             transition: all 0.2s;
         }
 
-        .todo-item input[type="checkbox"]:checked {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-        }
-
-        .todo-item input[type="checkbox"]:checked::after {
-            content: '✓';
-            color: white;
-            font-size: 13px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-weight: bold;
-        }
+        .todo-item input[type="checkbox"]:checked { background-color: var(--accent-color); border-color: var(--accent-color); }
+        .todo-item input[type="checkbox"]:checked::after { content: '✓'; color: white; font-size: 13px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; }
 
         .todo-item label {
             font-size: 16px;
@@ -221,46 +168,273 @@
             word-break: break-all;
             flex-grow: 1;
         }
+        .todo-item input[type="checkbox"]:checked + label { text-decoration: line-through; color: var(--checked-color); }
 
-        .todo-item input[type="checkbox"]:checked + label {
-            text-decoration: line-through;
-            color: var(--checked-color);
-        }
+        #show-input-btn { margin-top: 10px; background: transparent; color: #999; text-decoration: underline; font-size: 12px; }
 
-        #show-input-btn {
-            margin-top: 10px;
-            background: transparent;
-            color: #999;
-            text-decoration: underline;
-            font-size: 12px;
-        }
-
-        .footer-info {
-            margin-top: 20px;
-            font-size: 10px;
-            color: #ccc;
-            opacity: 0.6;
-        }
+        .footer-info { margin-top: 20px; font-size: 10px; color: #ccc; opacity: 0.6; }
         
-        .instance-id-tag {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 10px;
-            color: #aaa;
-            font-family: monospace;
+        /* 救命按钮：万一还是不显示，右下角有个红点可以重置 */
+        .emergency-reset {
+            position: fixed;
+            bottom: 5px;
+            right: 5px;
+            width: 15px;
+            height: 15px;
+            background: #eee;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 9999;
+            opacity: 0.2;
         }
+        .emergency-reset:hover { background: red; opacity: 1; }
+
+        .instance-id-tag { position: absolute; top: 10px; right: 15px; font-size: 10px; color: #aaa; font-family: monospace; }
 
         @media (prefers-color-scheme: dark) {
-            :root { 
-                --text-color: #ffffff; 
-                --checked-color: #666; 
-                --track-color: rgba(255,255,255,0.1);
-            }
+            :root { --text-color: #ffffff; --checked-color: #666; --track-color: rgba(255,255,255,0.1); }
             .dashboard, textarea { background: rgba(30,30,30, 0.6); border-color: #444; }
             .todo-item { background: rgba(255,255,255,0.03); }
             .todo-item:hover { background: rgba(255,255,255,0.08); }
             .todo-item input[type="checkbox"] { border-color: #666; }
             .widget-title { color: #aaa; }
             .btn-reset { background-color: #444; color: #fff; }
-            .btn-clear { background-color:
+            .btn-clear { background-color: #422; color: #ff8888; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="dashboard">
+            <div class="instance-id-tag" id="debug-id"></div>
+            
+            <div class="widget-title" id="page-title">背诵轮次</div>
+            <div class="round-count" id="round-display">0</div>
+            
+            <div class="progress-section" id="progress-area" style="display:none;">
+                <div class="progress-info">
+                    <span id="progress-text">进度</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progress-bar"></div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn-reset" id="btn-reset">归零</button>
+                <button class="btn-clear" id="btn-clear" style="display:none;">删除 (双击)</button>
+            </div>
+        </div>
+
+        <div class="input-section" id="input-area">
+            <textarea id="source-text" placeholder="在此处粘贴你的清单...
+(支持换行、逗号分隔)"></textarea>
+            <button class="btn-generate" onclick="generateList()">开始生成</button>
+        </div>
+
+        <div id="todo-list"></div>
+
+        <button id="show-input-btn" class="hidden" onclick="showInput()">+ 添加/修改清单</button>
+        
+        <div class="footer-info">v5.2 修复版</div>
+    </div>
+    
+    <div class="emergency-reset" onclick="hardReset()" title="点击强制重置数据"></div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const instanceId = urlParams.get('id') || 'default';
+        const customTitle = urlParams.get('title');
+        const STORAGE_KEY = 'recite_data_' + instanceId;
+
+        if (customTitle) document.getElementById('page-title').innerText = decodeURIComponent(customTitle);
+        if (instanceId !== 'default') document.getElementById('debug-id').innerText = instanceId;
+
+        let roundCount = 0;
+        const roundDisplay = document.getElementById('round-display');
+        const listContainer = document.getElementById('todo-list');
+        const inputArea = document.getElementById('input-area');
+        const clearBtn = document.getElementById('btn-clear');
+        const resetBtn = document.getElementById('btn-reset');
+        const showInputBtn = document.getElementById('show-input-btn');
+        const sourceTextArea = document.getElementById('source-text');
+        
+        const progressArea = document.getElementById('progress-area');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressPercent = document.getElementById('progress-percent');
+
+        // === 核心逻辑 ===
+        function saveData() {
+            try {
+                // 1. 保存勾选状态到 HTML 属性中 (Persist checkboxes)
+                const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+                checkboxes.forEach(cb => {
+                    if (cb.checked) {
+                        cb.setAttribute('checked', 'checked');
+                    } else {
+                        cb.removeAttribute('checked');
+                    }
+                });
+
+                const data = {
+                    round: roundCount,
+                    listHtml: listContainer.innerHTML, 
+                    isInputHidden: inputArea.classList.contains('hidden'),
+                    rawText: sourceTextArea.value
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch (e) { console.warn("Save error", e); }
+        }
+
+        function loadData() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    roundCount = data.round || 0;
+                    roundDisplay.innerText = roundCount;
+                    
+                    if (data.listHtml) listContainer.innerHTML = data.listHtml;
+                    if (data.rawText) sourceTextArea.value = data.rawText;
+
+                    // === 自检修复逻辑 ===
+                    // 只有当 listHtml 真的包含有效内容（比如 todo-item）时，才允许隐藏输入框
+                    // 防止 "isInputHidden=true" 但 "listHtml=空" 导致的白屏
+                    const hasValidContent = data.listHtml && data.listHtml.includes('todo-item');
+
+                    if (data.isInputHidden && hasValidContent) {
+                        inputArea.classList.add('hidden');
+                        showInputBtn.classList.remove('hidden');
+                        clearBtn.style.display = 'block';
+                    } else {
+                        // 如果没有内容，强制显示输入框
+                        showInput();
+                    }
+                    updateStats();
+                } else {
+                    showInput();
+                }
+            } catch (e) { 
+                console.error("Load crashed", e);
+                showInput(); // 出错了也强制显示输入框
+            }
+        }
+
+        function updateStats() {
+            const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+            const total = checkboxes.length;
+            
+            if (total === 0) {
+                progressArea.style.display = 'none';
+                return;
+            }
+
+            progressArea.style.display = 'block';
+            
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const percent = Math.round((checkedCount / total) * 100);
+
+            progressText.innerText = `${checkedCount} / ${total}`;
+            progressPercent.innerText = `${percent}%`;
+            progressBar.style.width = `${percent}%`;
+
+            if (percent === 100) {
+                progressBar.classList.add('completed');
+            } else {
+                progressBar.classList.remove('completed');
+            }
+        }
+
+        function generateList() {
+            const text = sourceTextArea.value;
+            if (!text.trim()) return;
+
+            inputArea.classList.add('hidden');
+            showInputBtn.classList.remove('hidden');
+            clearBtn.style.display = 'block';
+            
+            listContainer.innerHTML = ''; 
+            const lines = text.split(/[\n,，]/).map(t => t.trim()).filter(t => t.length > 0);
+            
+            lines.forEach((line, index) => {
+                const item = document.createElement('div');
+                item.className = 'todo-item';
+                const id = 'item-' + index + '-' + Date.now();
+                item.innerHTML = `
+                    <input type="checkbox" id="${id}" onchange="checkProgress()">
+                    <label for="${id}">${line}</label>
+                `;
+                listContainer.appendChild(item);
+            });
+            
+            updateStats();
+            saveData();
+        }
+
+        function checkProgress() {
+            const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+            if (checkboxes.length === 0) return;
+            
+            updateStats(); 
+            saveData(); // 实时保存
+
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            
+            if (checkedCount === checkboxes.length) {
+                setTimeout(() => {
+                    roundCount++;
+                    roundDisplay.innerText = roundCount;
+                    
+                    checkboxes.forEach(cb => {
+                        cb.checked = false;
+                        cb.removeAttribute('checked'); 
+                    });
+                    
+                    updateStats();
+                    saveData();
+                }, 500);
+            }
+        }
+
+        function showInput() {
+            inputArea.classList.remove('hidden');
+            showInputBtn.classList.add('hidden');
+            if(!listContainer.innerHTML.trim()) {
+                clearBtn.style.display = 'none';
+                progressArea.style.display = 'none';
+            }
+            saveData();
+        }
+        
+        // 强制重置
+        function hardReset() {
+            if(confirm('页面出现故障？点确定将重置数据。')) {
+                localStorage.removeItem(STORAGE_KEY);
+                location.reload();
+            }
+        }
+
+        resetBtn.addEventListener('click', function() {
+            roundCount = 0;
+            roundDisplay.innerText = 0;
+            saveData();
+            const originalText = this.innerText;
+            this.innerText = "OK";
+            setTimeout(() => { this.innerText = originalText; }, 1000);
+        });
+
+        clearBtn.addEventListener('dblclick', function() {
+            listContainer.innerHTML = '';
+            showInput(); 
+            clearBtn.style.display = 'none';
+            progressArea.style.display = 'none';
+            saveData();
+        });
+
+        window.onload = loadData;
+    </script>
+</body>
+</html>
