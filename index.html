@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>背诵检查单 (防白屏修复版)</title>
+    <title>背诵检查单 (多开分身版)</title>
     <style>
         :root {
             --bg-color: transparent;
@@ -38,23 +38,44 @@
             flex-direction: column;
             align-items: center;
             margin-bottom: 20px;
-            padding: 10px 20px;
+            padding: 15px 20px;
             background: rgba(255, 255, 255, 0.5);
             border-radius: 12px;
             backdrop-filter: blur(5px);
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             width: 100%;
             box-sizing: border-box;
+            position: relative;
         }
 
-        .round-title { font-size: 14px; color: #666; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
-        .round-count { font-size: 48px; font-weight: 700; color: var(--text-color); line-height: 1; }
+        /* 动态标题样式 */
+        .widget-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
 
-        .controls { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+        .round-info {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .round-count {
+            font-size: 42px;
+            font-weight: 700;
+            color: var(--text-color);
+            line-height: 1.1;
+        }
+
+        .controls { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
 
         button {
             border: none;
-            padding: 8px 14px;
+            padding: 6px 12px;
             font-size: 12px;
             border-radius: 6px;
             cursor: pointer;
@@ -62,7 +83,6 @@
             opacity: 0.9;
         }
         button:hover { opacity: 1; transform: translateY(-1px); }
-        button:active { transform: translateY(1px); }
 
         .btn-reset { background-color: #e0e0e0; color: #333; }
         
@@ -71,7 +91,7 @@
             color: var(--danger-color); 
             border: 1px solid transparent;
         }
-        .btn-clear:hover::after { content: '(双击执行)'; font-size: 10px; margin-left: 5px; opacity: 0.7; }
+        .btn-clear:hover::after { content: '(双击)'; font-size: 10px; margin-left: 3px; opacity: 0.7; }
 
         .btn-generate { 
             background-color: var(--accent-color); 
@@ -109,13 +129,12 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            /* 确保列表为空时也有高度，避免完全塌陷 */
             min-height: 10px; 
         }
 
         .todo-item {
             display: flex;
-            align-items: center;
+            align-items: flex-start; /* 改为顶部对齐，适应多行文本 */
             width: 100%;
             padding: 4px 0;
             transition: all 0.2s ease;
@@ -129,6 +148,7 @@
             border: 2px solid #37352f;
             border-radius: 4px;
             margin-right: 12px;
+            margin-top: 2px; /* 微调勾选框位置 */
             cursor: pointer;
             position: relative;
             flex-shrink: 0;
@@ -176,21 +196,17 @@
             margin-top: 30px;
             font-size: 10px;
             color: #ccc;
-            cursor: pointer;
+            opacity: 0.6;
         }
         
-        /* 救命按钮：万一还是不显示，右下角有个红点可以重置 */
-        .emergency-reset {
-            position: fixed;
-            bottom: 5px;
-            right: 5px;
-            width: 10px;
-            height: 10px;
-            background: #eee;
-            border-radius: 50%;
-            cursor: pointer;
+        /* 页面ID标识，调试用 */
+        .instance-id-tag {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            font-size: 9px;
+            color: #ddd;
         }
-        .emergency-reset:hover { background: red; }
 
         @media (prefers-color-scheme: dark) {
             :root { --text-color: #ffffff; --checked-color: #666; }
@@ -198,6 +214,7 @@
             .todo-item input[type="checkbox"] { border-color: #fff; }
             .todo-item input[type="checkbox"]:checked { background-color: #fff; border-color: #fff; }
             .todo-item input[type="checkbox"]:checked::after { color: #000; }
+            .widget-title { color: #fff; }
             .btn-reset { background-color: #444; color: #fff; }
             .btn-clear { background-color: #422; color: #ff8888; }
         }
@@ -207,33 +224,56 @@
 
     <div class="main-container">
         <div class="dashboard">
-            <div class="round-title">已完成轮次</div>
+            <div class="instance-id-tag" id="debug-id">ID: default</div>
+            
+            <div class="widget-title" id="page-title">背诵轮次</div>
+            
             <div class="round-count" id="round-display">0</div>
+            
             <div class="controls">
-                <button class="btn-reset" id="btn-reset">计数归零</button>
-                <button class="btn-clear" id="btn-clear" style="display:none;">删除列表 (双击)</button>
+                <button class="btn-reset" id="btn-reset">归零</button>
+                <button class="btn-clear" id="btn-clear" style="display:none;">删除 (双击)</button>
             </div>
         </div>
 
         <div class="input-section" id="input-area">
-            <textarea id="source-text" placeholder="粘贴你的单词/知识点列表...
+            <textarea id="source-text" placeholder="粘贴内容...
 (每行一个)"></textarea>
-            <button class="btn-generate" onclick="generateList()">生成背诵卡片</button>
+            <button class="btn-generate" onclick="generateList()">生成列表</button>
         </div>
 
         <div id="todo-list"></div>
 
-        <button id="show-input-btn" class="hidden" onclick="showInput()">+ 添加/修改内容</button>
-
-        <div class="footer-info" onclick="hardReset()">v3.2 修复版 (点我重置)</div>
+        <button id="show-input-btn" class="hidden" onclick="showInput()">+ 添加/修改</button>
+        
+        <div class="footer-info">v4.0 多开版</div>
     </div>
-    
-    <div class="emergency-reset" onclick="hardReset()" title="强制重置数据"></div>
 
     <script>
-        const STORAGE_KEY = 'my_recite_app_data_v1';
+        // === 1. 解析 URL 参数 (核心魔法) ===
+        const urlParams = new URLSearchParams(window.location.search);
+        // 获取 ?id=xxx，如果没有则默认为 'default'
+        const instanceId = urlParams.get('id') || 'default';
+        // 获取 ?title=xxx，支持自定义标题
+        const customTitle = urlParams.get('title');
+
+        // 生成唯一的存储钥匙：recite_data_western, recite_data_chinese ...
+        const STORAGE_KEY = 'recite_data_' + instanceId;
+
+        // === 2. 初始化界面 ===
+        if (customTitle) {
+            document.getElementById('page-title').innerText = decodeURIComponent(customTitle);
+        } else {
+            // 如果没有设置标题，但设置了id，就简单显示ID名
+            if(instanceId !== 'default') {
+                document.getElementById('page-title').innerText = instanceId.toUpperCase();
+            }
+        }
+        document.getElementById('debug-id').innerText = '#' + instanceId;
+
+
+        // === 3. 常规逻辑 (和之前一样) ===
         let roundCount = 0;
-        
         const roundDisplay = document.getElementById('round-display');
         const listContainer = document.getElementById('todo-list');
         const inputArea = document.getElementById('input-area');
@@ -251,7 +291,7 @@
                     rawText: sourceTextArea.value
                 };
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            } catch (e) { console.warn("Save failed:", e); }
+            } catch (e) { console.warn("Save error", e); }
         }
 
         function loadData() {
@@ -262,30 +302,21 @@
                     roundCount = data.round || 0;
                     roundDisplay.innerText = roundCount;
                     
-                    if (data.listHtml) {
-                        listContainer.innerHTML = data.listHtml;
-                    }
-                    if (data.rawText) {
-                        sourceTextArea.value = data.rawText;
-                    }
+                    if (data.listHtml) listContainer.innerHTML = data.listHtml;
+                    if (data.rawText) sourceTextArea.value = data.rawText;
 
-                    // 核心修复逻辑：
-                    // 只有当 listHtml 真的有内容时，才允许隐藏输入框
-                    // 如果 listHtml 是空的，强制显示输入框！
                     if (data.isInputHidden && data.listHtml && data.listHtml.trim().length > 0) {
                         inputArea.classList.add('hidden');
                         showInputBtn.classList.remove('hidden');
                         clearBtn.style.display = 'block';
                     } else {
-                        // 强制显示输入框
                         showInput();
                     }
+                } else {
+                    // 如果是新的ID，没有任何数据，显示输入框
+                    showInput();
                 }
-            } catch (e) {
-                console.warn("Load failed:", e);
-                // 出错了也强制显示
-                showInput();
-            }
+            } catch (e) { showInput(); }
         }
 
         function generateList() {
@@ -330,28 +361,16 @@
         function showInput() {
             inputArea.classList.remove('hidden');
             showInputBtn.classList.add('hidden');
-            // 如果列表是空的，不需要显示清空按钮
-            if(!listContainer.innerHTML.trim()) {
-                 clearBtn.style.display = 'none';
-            }
+            if(!listContainer.innerHTML.trim()) clearBtn.style.display = 'none';
             saveData();
         }
 
-        // 强制重置功能
-        function hardReset() {
-            if(confirm("页面卡住了？点击确定将清除所有数据并重置。")) {
-                localStorage.removeItem(STORAGE_KEY);
-                location.reload();
-            }
-        }
-
-        // 绑定事件
         resetBtn.addEventListener('click', function() {
             roundCount = 0;
             roundDisplay.innerText = 0;
             saveData();
             const originalText = this.innerText;
-            this.innerText = "已归零";
+            this.innerText = "OK";
             setTimeout(() => { this.innerText = originalText; }, 1000);
         });
 
@@ -360,14 +379,6 @@
             showInput(); 
             clearBtn.style.display = 'none';
             saveData();
-        });
-
-        clearBtn.addEventListener('click', function() {
-            const originalText = this.innerText;
-            if(!originalText.includes("双击")) {
-                 this.innerText = "请双击确认";
-                 setTimeout(() => { this.innerText = originalText; }, 2000);
-            }
         });
 
         window.onload = loadData;
