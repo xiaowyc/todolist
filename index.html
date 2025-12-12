@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>背诵检查单 (进度条版)</title>
+    <title>背诵检查单 (完美存档版)</title>
     <style>
         :root {
             --bg-color: transparent;
             --text-color: #37352f;
             --checked-color: #9b9a97;
             --accent-color: #2383e2;
-            --success-color: #2ea043; /* 成功绿色 */
+            --success-color: #2ea043;
             --danger-color: #eb5757;
-            --track-color: rgba(0,0,0,0.05); /* 进度条底色 */
+            --track-color: rgba(0,0,0,0.05);
         }
 
         body {
@@ -35,7 +35,6 @@
             align-items: center;
         }
 
-        /* 仪表盘样式升级 */
         .dashboard {
             display: flex;
             flex-direction: column;
@@ -66,10 +65,9 @@
             color: var(--text-color);
             line-height: 1;
             margin-bottom: 10px;
-            font-variant-numeric: tabular-nums; /* 数字等宽，防止跳动 */
+            font-variant-numeric: tabular-nums;
         }
 
-        /* === 核心新增：进度条区域 === */
         .progress-section {
             width: 100%;
             margin: 10px 0;
@@ -100,7 +98,6 @@
             transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s;
         }
         
-        /* 进度条满时的特效类 */
         .progress-fill.completed {
             background-color: var(--success-color);
         }
@@ -174,7 +171,7 @@
             align-items: flex-start;
             width: 100%;
             padding: 6px 10px;
-            background: rgba(255,255,255,0.3); /* 轻微背景让条目更清晰 */
+            background: rgba(255,255,255,0.3);
             border-radius: 6px;
             transition: all 0.2s ease;
         }
@@ -266,228 +263,4 @@
             .todo-item input[type="checkbox"] { border-color: #666; }
             .widget-title { color: #aaa; }
             .btn-reset { background-color: #444; color: #fff; }
-            .btn-clear { background-color: #422; color: #ff8888; }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="main-container">
-        <div class="dashboard">
-            <div class="instance-id-tag" id="debug-id"></div>
-            
-            <div class="widget-title" id="page-title">背诵轮次</div>
-            <div class="round-count" id="round-display">0</div>
-            
-            <div class="progress-section" id="progress-area" style="display:none;">
-                <div class="progress-info">
-                    <span id="progress-text">进度</span>
-                    <span id="progress-percent">0%</span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill" id="progress-bar"></div>
-                </div>
-            </div>
-
-            <div class="controls">
-                <button class="btn-reset" id="btn-reset">归零</button>
-                <button class="btn-clear" id="btn-clear" style="display:none;">删除 (双击)</button>
-            </div>
-        </div>
-
-        <div class="input-section" id="input-area">
-            <textarea id="source-text" placeholder="在此处粘贴你的清单...
-(支持换行、逗号分隔)"></textarea>
-            <button class="btn-generate" onclick="generateList()">开始生成</button>
-        </div>
-
-        <div id="todo-list"></div>
-
-        <button id="show-input-btn" class="hidden" onclick="showInput()">+ 添加/修改清单</button>
-        
-        <div class="footer-info">v5.0 Pro</div>
-    </div>
-
-    <script>
-        // === 1. 初始化与参数解析 ===
-        const urlParams = new URLSearchParams(window.location.search);
-        const instanceId = urlParams.get('id') || 'default';
-        const customTitle = urlParams.get('title');
-        const STORAGE_KEY = 'recite_data_' + instanceId;
-
-        // 设置标题
-        if (customTitle) document.getElementById('page-title').innerText = decodeURIComponent(customTitle);
-        if (instanceId !== 'default') document.getElementById('debug-id').innerText = instanceId;
-
-        // === 2. 变量引用 ===
-        let roundCount = 0;
-        const roundDisplay = document.getElementById('round-display');
-        const listContainer = document.getElementById('todo-list');
-        const inputArea = document.getElementById('input-area');
-        const clearBtn = document.getElementById('btn-clear');
-        const resetBtn = document.getElementById('btn-reset');
-        const showInputBtn = document.getElementById('show-input-btn');
-        const sourceTextArea = document.getElementById('source-text');
-        
-        // 进度条相关元素
-        const progressArea = document.getElementById('progress-area');
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        const progressPercent = document.getElementById('progress-percent');
-
-        // === 3. 数据存取 ===
-        function saveData() {
-            try {
-                const data = {
-                    round: roundCount,
-                    listHtml: listContainer.innerHTML, 
-                    isInputHidden: inputArea.classList.contains('hidden'),
-                    rawText: sourceTextArea.value
-                };
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            } catch (e) { console.warn("Save error", e); }
-        }
-
-        function loadData() {
-            try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    roundCount = data.round || 0;
-                    roundDisplay.innerText = roundCount;
-                    
-                    if (data.listHtml) listContainer.innerHTML = data.listHtml;
-                    if (data.rawText) sourceTextArea.value = data.rawText;
-
-                    if (data.isInputHidden && data.listHtml && data.listHtml.trim().length > 0) {
-                        inputArea.classList.add('hidden');
-                        showInputBtn.classList.remove('hidden');
-                        clearBtn.style.display = 'block';
-                    } else {
-                        showInput();
-                    }
-                    // 加载完数据后，立即刷新一次进度条状态
-                    updateStats();
-                } else {
-                    showInput();
-                }
-            } catch (e) { showInput(); }
-        }
-
-        // === 4. 核心功能逻辑 ===
-        
-        // 新增：更新统计数据与进度条
-        function updateStats() {
-            const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
-            const total = checkboxes.length;
-            
-            // 如果没有列表项，隐藏进度条
-            if (total === 0) {
-                progressArea.style.display = 'none';
-                return;
-            }
-
-            // 显示进度条区域
-            progressArea.style.display = 'block';
-            
-            // 计算已完成数量
-            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-            const percent = Math.round((checkedCount / total) * 100);
-
-            // 更新文字 (例如：5 / 10)
-            progressText.innerText = `${checkedCount} / ${total}`;
-            progressPercent.innerText = `${percent}%`;
-
-            // 更新进度条宽度
-            progressBar.style.width = `${percent}%`;
-
-            // 如果满了，变绿；没满，恢复蓝色
-            if (percent === 100) {
-                progressBar.classList.add('completed');
-            } else {
-                progressBar.classList.remove('completed');
-            }
-        }
-
-        function generateList() {
-            const text = sourceTextArea.value;
-            if (!text.trim()) return;
-
-            inputArea.classList.add('hidden');
-            showInputBtn.classList.remove('hidden');
-            clearBtn.style.display = 'block';
-            
-            listContainer.innerHTML = ''; 
-            const lines = text.split(/[\n,，]/).map(t => t.trim()).filter(t => t.length > 0);
-            
-            lines.forEach((line, index) => {
-                const item = document.createElement('div');
-                item.className = 'todo-item';
-                const id = 'item-' + index + '-' + Date.now();
-                item.innerHTML = `
-                    <input type="checkbox" id="${id}" onchange="checkProgress()">
-                    <label for="${id}">${line}</label>
-                `;
-                listContainer.appendChild(item);
-            });
-            
-            updateStats(); // 生成后立即计算一次
-            saveData();
-        }
-
-        function checkProgress() {
-            const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
-            if (checkboxes.length === 0) return;
-            
-            updateStats(); // 每次点击都更新进度条
-            saveData();
-
-            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-            
-            // 如果全部完成
-            if (checkedCount === checkboxes.length) {
-                setTimeout(() => {
-                    roundCount++;
-                    roundDisplay.innerText = roundCount;
-                    
-                    // 重置所有框
-                    checkboxes.forEach(cb => cb.checked = false);
-                    
-                    // 重置后再次刷新进度条（回到0%）
-                    updateStats();
-                    saveData();
-                }, 500); // 稍微延迟一点，让用户看到满格的进度条
-            }
-        }
-
-        function showInput() {
-            inputArea.classList.remove('hidden');
-            showInputBtn.classList.add('hidden');
-            if(!listContainer.innerHTML.trim()) {
-                clearBtn.style.display = 'none';
-                progressArea.style.display = 'none'; // 输入时隐藏进度条
-            }
-            saveData();
-        }
-
-        resetBtn.addEventListener('click', function() {
-            roundCount = 0;
-            roundDisplay.innerText = 0;
-            saveData();
-            const originalText = this.innerText;
-            this.innerText = "OK";
-            setTimeout(() => { this.innerText = originalText; }, 1000);
-        });
-
-        clearBtn.addEventListener('dblclick', function() {
-            listContainer.innerHTML = '';
-            showInput(); 
-            clearBtn.style.display = 'none';
-            progressArea.style.display = 'none'; // 清空后隐藏进度条
-            saveData();
-        });
-
-        window.onload = loadData;
-    </script>
-</body>
-</html>
+            .btn-clear { background-color:
