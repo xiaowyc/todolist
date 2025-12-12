@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>背诵检查单 (多开分身版)</title>
+    <title>背诵检查单 (进度条版)</title>
     <style>
         :root {
             --bg-color: transparent;
             --text-color: #37352f;
             --checked-color: #9b9a97;
             --accent-color: #2383e2;
+            --success-color: #2ea043; /* 成功绿色 */
             --danger-color: #eb5757;
+            --track-color: rgba(0,0,0,0.05); /* 进度条底色 */
         }
 
         body {
@@ -33,45 +35,77 @@
             align-items: center;
         }
 
+        /* 仪表盘样式升级 */
         .dashboard {
             display: flex;
             flex-direction: column;
             align-items: center;
             margin-bottom: 20px;
             padding: 15px 20px;
-            background: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.6);
             border-radius: 12px;
-            backdrop-filter: blur(5px);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
             width: 100%;
             box-sizing: border-box;
             position: relative;
+            transition: all 0.3s ease;
         }
 
-        /* 动态标题样式 */
         .widget-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             margin-bottom: 5px;
-            color: #333;
-        }
-
-        .round-info {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 2px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            color: #555;
+            opacity: 0.8;
         }
 
         .round-count {
-            font-size: 42px;
-            font-weight: 700;
+            font-size: 48px;
+            font-weight: 800;
             color: var(--text-color);
-            line-height: 1.1;
+            line-height: 1;
+            margin-bottom: 10px;
+            font-variant-numeric: tabular-nums; /* 数字等宽，防止跳动 */
         }
 
-        .controls { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+        /* === 核心新增：进度条区域 === */
+        .progress-section {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background-color: var(--track-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background-color: var(--accent-color);
+            border-radius: 4px;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s;
+        }
+        
+        /* 进度条满时的特效类 */
+        .progress-fill.completed {
+            background-color: var(--success-color);
+        }
+
+        .controls { display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap; justify-content: center; }
 
         button {
             border: none;
@@ -112,7 +146,7 @@
 
         textarea {
             width: 100%;
-            height: 100px;
+            height: 120px;
             padding: 12px;
             border: 1px solid rgba(0,0,0,0.1);
             border-radius: 8px;
@@ -120,6 +154,8 @@
             background: rgba(255,255,255,0.8);
             font-family: inherit;
             box-sizing: border-box;
+            font-size: 14px;
+            line-height: 1.5;
         }
         
         .hidden { display: none !important; }
@@ -128,16 +164,23 @@
             width: 100%;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             min-height: 10px; 
+            padding-bottom: 40px;
         }
 
         .todo-item {
             display: flex;
-            align-items: flex-start; /* 改为顶部对齐，适应多行文本 */
+            align-items: flex-start;
             width: 100%;
-            padding: 4px 0;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.3); /* 轻微背景让条目更清晰 */
+            border-radius: 6px;
             transition: all 0.2s ease;
+        }
+        
+        .todo-item:hover {
+            background: rgba(0,0,0,0.03);
         }
 
         .todo-item input[type="checkbox"] {
@@ -145,38 +188,41 @@
             -webkit-appearance: none;
             width: 20px;
             height: 20px;
-            border: 2px solid #37352f;
-            border-radius: 4px;
+            border: 2px solid #888;
+            border-radius: 5px;
             margin-right: 12px;
-            margin-top: 2px; /* 微调勾选框位置 */
+            margin-top: 3px;
             cursor: pointer;
             position: relative;
             flex-shrink: 0;
+            transition: all 0.2s;
         }
 
         .todo-item input[type="checkbox"]:checked {
-            background-color: var(--text-color);
-            border-color: var(--text-color);
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
         }
 
         .todo-item input[type="checkbox"]:checked::after {
             content: '✓';
             color: white;
-            font-size: 14px;
+            font-size: 13px;
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            font-weight: bold;
         }
 
         .todo-item label {
-            font-size: 18px;
+            font-size: 16px;
             color: var(--text-color);
             cursor: pointer;
-            line-height: 1.4;
+            line-height: 1.5;
             transition: color 0.2s;
             text-align: left;
             word-break: break-all;
+            flex-grow: 1;
         }
 
         .todo-item input[type="checkbox"]:checked + label {
@@ -185,7 +231,7 @@
         }
 
         #show-input-btn {
-            margin-top: 20px;
+            margin-top: 10px;
             background: transparent;
             color: #999;
             text-decoration: underline;
@@ -193,28 +239,32 @@
         }
 
         .footer-info {
-            margin-top: 30px;
+            margin-top: 20px;
             font-size: 10px;
             color: #ccc;
             opacity: 0.6;
         }
         
-        /* 页面ID标识，调试用 */
         .instance-id-tag {
             position: absolute;
-            top: 5px;
-            right: 10px;
-            font-size: 9px;
-            color: #ddd;
+            top: 10px;
+            right: 15px;
+            font-size: 10px;
+            color: #aaa;
+            font-family: monospace;
         }
 
         @media (prefers-color-scheme: dark) {
-            :root { --text-color: #ffffff; --checked-color: #666; }
-            .dashboard, textarea { background: rgba(40,40,40, 0.5); border-color: #444; }
-            .todo-item input[type="checkbox"] { border-color: #fff; }
-            .todo-item input[type="checkbox"]:checked { background-color: #fff; border-color: #fff; }
-            .todo-item input[type="checkbox"]:checked::after { color: #000; }
-            .widget-title { color: #fff; }
+            :root { 
+                --text-color: #ffffff; 
+                --checked-color: #666; 
+                --track-color: rgba(255,255,255,0.1);
+            }
+            .dashboard, textarea { background: rgba(30,30,30, 0.6); border-color: #444; }
+            .todo-item { background: rgba(255,255,255,0.03); }
+            .todo-item:hover { background: rgba(255,255,255,0.08); }
+            .todo-item input[type="checkbox"] { border-color: #666; }
+            .widget-title { color: #aaa; }
             .btn-reset { background-color: #444; color: #fff; }
             .btn-clear { background-color: #422; color: #ff8888; }
         }
@@ -224,12 +274,21 @@
 
     <div class="main-container">
         <div class="dashboard">
-            <div class="instance-id-tag" id="debug-id">ID: default</div>
+            <div class="instance-id-tag" id="debug-id"></div>
             
             <div class="widget-title" id="page-title">背诵轮次</div>
-            
             <div class="round-count" id="round-display">0</div>
             
+            <div class="progress-section" id="progress-area" style="display:none;">
+                <div class="progress-info">
+                    <span id="progress-text">进度</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progress-bar"></div>
+                </div>
+            </div>
+
             <div class="controls">
                 <button class="btn-reset" id="btn-reset">归零</button>
                 <button class="btn-clear" id="btn-clear" style="display:none;">删除 (双击)</button>
@@ -237,42 +296,30 @@
         </div>
 
         <div class="input-section" id="input-area">
-            <textarea id="source-text" placeholder="粘贴内容...
-(每行一个)"></textarea>
-            <button class="btn-generate" onclick="generateList()">生成列表</button>
+            <textarea id="source-text" placeholder="在此处粘贴你的清单...
+(支持换行、逗号分隔)"></textarea>
+            <button class="btn-generate" onclick="generateList()">开始生成</button>
         </div>
 
         <div id="todo-list"></div>
 
-        <button id="show-input-btn" class="hidden" onclick="showInput()">+ 添加/修改</button>
+        <button id="show-input-btn" class="hidden" onclick="showInput()">+ 添加/修改清单</button>
         
-        <div class="footer-info">v4.0 多开版</div>
+        <div class="footer-info">v5.0 Pro</div>
     </div>
 
     <script>
-        // === 1. 解析 URL 参数 (核心魔法) ===
+        // === 1. 初始化与参数解析 ===
         const urlParams = new URLSearchParams(window.location.search);
-        // 获取 ?id=xxx，如果没有则默认为 'default'
         const instanceId = urlParams.get('id') || 'default';
-        // 获取 ?title=xxx，支持自定义标题
         const customTitle = urlParams.get('title');
-
-        // 生成唯一的存储钥匙：recite_data_western, recite_data_chinese ...
         const STORAGE_KEY = 'recite_data_' + instanceId;
 
-        // === 2. 初始化界面 ===
-        if (customTitle) {
-            document.getElementById('page-title').innerText = decodeURIComponent(customTitle);
-        } else {
-            // 如果没有设置标题，但设置了id，就简单显示ID名
-            if(instanceId !== 'default') {
-                document.getElementById('page-title').innerText = instanceId.toUpperCase();
-            }
-        }
-        document.getElementById('debug-id').innerText = '#' + instanceId;
+        // 设置标题
+        if (customTitle) document.getElementById('page-title').innerText = decodeURIComponent(customTitle);
+        if (instanceId !== 'default') document.getElementById('debug-id').innerText = instanceId;
 
-
-        // === 3. 常规逻辑 (和之前一样) ===
+        // === 2. 变量引用 ===
         let roundCount = 0;
         const roundDisplay = document.getElementById('round-display');
         const listContainer = document.getElementById('todo-list');
@@ -281,7 +328,14 @@
         const resetBtn = document.getElementById('btn-reset');
         const showInputBtn = document.getElementById('show-input-btn');
         const sourceTextArea = document.getElementById('source-text');
+        
+        // 进度条相关元素
+        const progressArea = document.getElementById('progress-area');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressPercent = document.getElementById('progress-percent');
 
+        // === 3. 数据存取 ===
         function saveData() {
             try {
                 const data = {
@@ -312,11 +366,47 @@
                     } else {
                         showInput();
                     }
+                    // 加载完数据后，立即刷新一次进度条状态
+                    updateStats();
                 } else {
-                    // 如果是新的ID，没有任何数据，显示输入框
                     showInput();
                 }
             } catch (e) { showInput(); }
+        }
+
+        // === 4. 核心功能逻辑 ===
+        
+        // 新增：更新统计数据与进度条
+        function updateStats() {
+            const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+            const total = checkboxes.length;
+            
+            // 如果没有列表项，隐藏进度条
+            if (total === 0) {
+                progressArea.style.display = 'none';
+                return;
+            }
+
+            // 显示进度条区域
+            progressArea.style.display = 'block';
+            
+            // 计算已完成数量
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const percent = Math.round((checkedCount / total) * 100);
+
+            // 更新文字 (例如：5 / 10)
+            progressText.innerText = `${checkedCount} / ${total}`;
+            progressPercent.innerText = `${percent}%`;
+
+            // 更新进度条宽度
+            progressBar.style.width = `${percent}%`;
+
+            // 如果满了，变绿；没满，恢复蓝色
+            if (percent === 100) {
+                progressBar.classList.add('completed');
+            } else {
+                progressBar.classList.remove('completed');
+            }
         }
 
         function generateList() {
@@ -329,6 +419,7 @@
             
             listContainer.innerHTML = ''; 
             const lines = text.split(/[\n,，]/).map(t => t.trim()).filter(t => t.length > 0);
+            
             lines.forEach((line, index) => {
                 const item = document.createElement('div');
                 item.className = 'todo-item';
@@ -339,29 +430,43 @@
                 `;
                 listContainer.appendChild(item);
             });
+            
+            updateStats(); // 生成后立即计算一次
             saveData();
         }
 
         function checkProgress() {
             const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
             if (checkboxes.length === 0) return;
+            
+            updateStats(); // 每次点击都更新进度条
             saveData();
 
             const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            
+            // 如果全部完成
             if (checkedCount === checkboxes.length) {
                 setTimeout(() => {
                     roundCount++;
                     roundDisplay.innerText = roundCount;
+                    
+                    // 重置所有框
                     checkboxes.forEach(cb => cb.checked = false);
+                    
+                    // 重置后再次刷新进度条（回到0%）
+                    updateStats();
                     saveData();
-                }, 300); 
+                }, 500); // 稍微延迟一点，让用户看到满格的进度条
             }
         }
 
         function showInput() {
             inputArea.classList.remove('hidden');
             showInputBtn.classList.add('hidden');
-            if(!listContainer.innerHTML.trim()) clearBtn.style.display = 'none';
+            if(!listContainer.innerHTML.trim()) {
+                clearBtn.style.display = 'none';
+                progressArea.style.display = 'none'; // 输入时隐藏进度条
+            }
             saveData();
         }
 
@@ -378,6 +483,7 @@
             listContainer.innerHTML = '';
             showInput(); 
             clearBtn.style.display = 'none';
+            progressArea.style.display = 'none'; // 清空后隐藏进度条
             saveData();
         });
 
