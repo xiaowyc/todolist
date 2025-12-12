@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>背诵检查单</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: transparent; /* 透明背景适配 Notion */
+            color: #37352f;
+        }
+
+        /* 输入区域容器 */
+        .input-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        /* 大文本输入框 */
+        #source-text {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            box-sizing: border-box; /* 让padding不撑破宽度 */
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            resize: vertical; /* 允许用户垂直拉伸 */
+            margin-bottom: 10px;
+        }
+
+        /* 生成按钮 */
+        #generate-btn {
+            background-color: #2383e2; /* Notion 蓝色 */
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #generate-btn:hover {
+            background-color: #1a6fc0;
+        }
+
+        /* 生成后的列表容器 */
+        #todo-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px; /* 列表项之间的间距 */
+            max-height: 60vh; /* 设置最大高度，太多了可以滚动 */
+            overflow-y: auto;
+        }
+
+        /* 单个列表项 */
+        .todo-item {
+            display: flex;
+            align-items: center;
+            font-size: 16px;
+        }
+
+        /* 复选框样式 */
+        .todo-item input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #2383e2; /* 设置勾选框的颜色 */
+        }
+
+        /* 文本标签样式 */
+        .todo-item label {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        /* --- 核心交互样式 --- */
+        /* 当复选框被选中时，它后面的 label 标签的样式 */
+        .todo-item input[type="checkbox"]:checked + label {
+            text-decoration: line-through; /* 添加删除线 */
+            color: #aaa; /* 颜色变淡 */
+            opacity: 0.8;
+        }
+
+        /* 适配深色模式 */
+        @media (prefers-color-scheme: dark) {
+            body { color: #ffffff; }
+            #source-text {
+                background-color: #2b2b2b;
+                border-color: #444;
+                color: #fff;
+            }
+            .input-section { border-bottom-color: rgba(255,255,255,0.1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="input-section">
+        <textarea id="source-text" placeholder="在这里批量粘贴名词...
+例如：
+苹果
+香蕉
+橘子
+(支持换行或逗号分隔)"></textarea>
+        <button id="generate-btn">开始背诵 (生成列表)</button>
+    </div>
+
+    <div id="todo-list">
+        </div>
+
+    <script>
+        // 获取页面元素
+        const textArea = document.getElementById('source-text');
+        const generateBtn = document.getElementById('generate-btn');
+        const listContainer = document.getElementById('todo-list');
+
+        // 监听按钮点击事件
+        generateBtn.addEventListener('click', function() {
+            // 1. 获取文本框里的原始内容
+            const rawText = textArea.value;
+
+            if (!rawText.trim()) {
+                alert("请先在文本框里输入一些内容哦~");
+                return;
+            }
+
+            // 2. 处理文本：按换行符(\n)或者中英文逗号(,|，)分割成数组
+            // .split(...) 把字符串切开
+            // .map(...) 去掉每个词前后的空格
+            // .filter(...) 过滤掉空行
+            const terms = rawText.split(/[\n,，]/)
+                                 .map(term => term.trim())
+                                 .filter(term => term.length > 0);
+            
+            // 3. 清空容器（防止多次点击按钮重复生成）
+            listContainer.innerHTML = '';
+
+            // 4. 循环数组，为每个词生成 HTML 元素
+            terms.forEach((term, index) => {
+                // 创建一个外壳 div
+                const itemWrapper = document.createElement('div');
+                itemWrapper.className = 'todo-item';
+
+                // 生成唯一的 ID，用于绑定 checkbox 和 label
+                const uniqueId = 'term-' + index;
+
+                // 创建 checkbox
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = uniqueId;
+
+                // 创建文字标签 label
+                const label = document.createElement('label');
+                label.setAttribute('for', uniqueId); // 让点击文字也能勾选 checkbox
+                label.innerText = term;
+
+                // 把它们组装起来
+                itemWrapper.appendChild(checkbox);
+                itemWrapper.appendChild(label);
+
+                // 放到页面上
+                listContainer.appendChild(itemWrapper);
+            });
+
+            // 可选：生成后清空输入框，或者隐藏输入区域，看你喜好
+            // textArea.value = ''; 
+            // document.querySelector('.input-section').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
