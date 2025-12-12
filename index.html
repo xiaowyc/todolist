@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>循环背诵检查单</title>
+    <title>循环背诵检查单 (自动存档版)</title>
     <style>
         :root {
-            /* 提取了参考图中的颜色风格 */
-            --bg-color: transparent; /* Notion 中保持透明 */
+            --bg-color: transparent;
             --text-color: #37352f;
-            --checked-color: #9b9a97; /* 选中后的灰色 */
-            --accent-color: #2383e2; /* 按钮蓝色 */
-            --danger-color: #eb5757; /* 删除按钮红色 */
+            --checked-color: #9b9a97;
+            --accent-color: #2383e2;
+            --danger-color: #eb5757;
         }
 
         body {
@@ -22,20 +21,18 @@
             color: var(--text-color);
             display: flex;
             flex-direction: column;
-            align-items: center; /* 【核心】所有元素垂直居中 */
+            align-items: center;
             min-height: 100vh;
         }
 
-        /* 主容器，控制最大宽度，保持美观 */
         .main-container {
             width: 100%;
-            max-width: 400px; /* 限制宽度，模拟手机或卡片视图 */
+            max-width: 400px;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
-        /* 顶部数据看板 */
         .dashboard {
             display: flex;
             flex-direction: column;
@@ -65,7 +62,6 @@
             line-height: 1;
         }
 
-        /* 按钮组 */
         .controls {
             display: flex;
             gap: 10px;
@@ -93,7 +89,6 @@
             margin-top: 10px;
         }
 
-        /* 输入区域 */
         .input-section {
             width: 100%;
             margin-bottom: 20px;
@@ -115,30 +110,23 @@
             box-sizing: border-box;
         }
         
-        /* 隐藏输入框的样式类 (生成后折叠) */
-        .hidden {
-            display: none;
-        }
+        .hidden { display: none !important; }
 
-        /* 列表区域 */
         #todo-list {
             width: 100%;
             display: flex;
             flex-direction: column;
-            gap: 12px; /* 列表项间距 */
+            gap: 12px;
         }
 
-        /* 单个列表项样式 - 参考你的截图风格 */
         .todo-item {
             display: flex;
-            align-items: center; /* 垂直居中 */
-            /* 虽然整体居中，但列表文字还是左对齐好看且易读，这里容器是100%宽 */
+            align-items: center;
             width: 100%;
             padding: 4px 0;
             transition: all 0.2s ease;
         }
 
-        /* 复选框美化 */
         .todo-item input[type="checkbox"] {
             appearance: none;
             -webkit-appearance: none;
@@ -149,16 +137,14 @@
             margin-right: 12px;
             cursor: pointer;
             position: relative;
-            flex-shrink: 0; /* 防止文字太长挤压复选框 */
+            flex-shrink: 0;
         }
 
-        /* 勾选状态 */
         .todo-item input[type="checkbox"]:checked {
             background-color: var(--text-color);
             border-color: var(--text-color);
         }
 
-        /* 勾选后的对号 */
         .todo-item input[type="checkbox"]:checked::after {
             content: '✓';
             color: white;
@@ -169,24 +155,21 @@
             transform: translate(-50%, -50%);
         }
 
-        /* 文字样式 */
         .todo-item label {
             font-size: 18px;
             color: var(--text-color);
             cursor: pointer;
             line-height: 1.4;
             transition: color 0.2s;
-            text-align: left; /* 保持文字左对齐，阅读更舒服 */
+            text-align: left;
             word-break: break-all;
         }
 
-        /* 核心交互：完成后的样式（参考截图：变灰+删除线） */
         .todo-item input[type="checkbox"]:checked + label {
             text-decoration: line-through;
             color: var(--checked-color);
         }
 
-        /* 再次显示的输入入口 */
         #show-input-btn {
             margin-top: 20px;
             background: transparent;
@@ -195,7 +178,6 @@
             font-size: 12px;
         }
 
-        /* 深色模式适配 */
         @media (prefers-color-scheme: dark) {
             :root {
                 --text-color: #ffffff;
@@ -234,7 +216,10 @@
     </div>
 
     <script>
+        // === 1. 初始化变量 ===
+        const STORAGE_KEY = 'my_recite_app_data_v1'; // 存储数据的钥匙
         let roundCount = 0;
+        
         const roundDisplay = document.getElementById('round-display');
         const listContainer = document.getElementById('todo-list');
         const inputArea = document.getElementById('input-area');
@@ -242,83 +227,125 @@
         const showInputBtn = document.getElementById('show-input-btn');
         const sourceTextArea = document.getElementById('source-text');
 
-        // 生成列表
+        // === 2. 核心功能：保存与读取 ===
+        
+        // 每次数据变动，都调用这个函数保存到浏览器
+        function saveData() {
+            const data = {
+                round: roundCount,
+                // 保存当前列表的 HTML (包含文字和勾选状态)
+                listHtml: listContainer.innerHTML, 
+                // 记录当前输入框是否应该隐藏
+                isInputHidden: inputArea.classList.contains('hidden'),
+                // 记录文本框里的原始文字，方便用户修改
+                rawText: sourceTextArea.value
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        // 页面打开时，尝试读取数据
+        function loadData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const data = JSON.parse(saved);
+                
+                // 恢复轮数
+                roundCount = data.round || 0;
+                roundDisplay.innerText = roundCount;
+                
+                // 恢复列表内容
+                if (data.listHtml) {
+                    listContainer.innerHTML = data.listHtml;
+                }
+
+                // 恢复文本框内容
+                if (data.rawText) {
+                    sourceTextArea.value = data.rawText;
+                }
+
+                // 恢复界面状态 (显示列表还是显示输入框)
+                if (data.isInputHidden) {
+                    inputArea.classList.add('hidden');
+                    showInputBtn.classList.remove('hidden');
+                    clearBtn.style.display = 'block';
+                }
+            }
+        }
+
+        // === 3. 业务逻辑 (已加入自动保存) ===
+
         function generateList() {
             const text = sourceTextArea.value;
             if (!text.trim()) return;
 
-            // 隐藏输入框，显示清空按钮
             inputArea.classList.add('hidden');
             showInputBtn.classList.remove('hidden');
             clearBtn.style.display = 'block';
             
-            listContainer.innerHTML = ''; // 清空旧的
+            listContainer.innerHTML = ''; 
             
             const lines = text.split(/[\n,，]/).map(t => t.trim()).filter(t => t.length > 0);
 
             lines.forEach((line, index) => {
                 const item = document.createElement('div');
                 item.className = 'todo-item';
-                
-                const id = 'item-' + index;
-                
-                // 构建 HTML 结构
+                const id = 'item-' + index + '-' + Date.now(); // 加上时间戳防止ID重复
                 item.innerHTML = `
                     <input type="checkbox" id="${id}" onchange="checkProgress()">
                     <label for="${id}">${line}</label>
                 `;
-                
                 listContainer.appendChild(item);
             });
+
+            saveData(); // 保存！
         }
 
-        // 核心逻辑：检查进度
         function checkProgress() {
             const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
             if (checkboxes.length === 0) return;
 
-            // 计算有多少个被勾选了
+            // 只要有点击，先保存一下当前勾选状态
+            saveData();
+
             const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
 
-            // 如果全部勾选了 (checkedCount 等于 总数)
             if (checkedCount === checkboxes.length) {
-                // 延迟一小会儿，让用户看到最后一个勾被打上
                 setTimeout(() => {
-                    // 1. 轮次 +1
                     roundCount++;
                     roundDisplay.innerText = roundCount;
-                    
-                    // 2. 全部取消勾选
                     checkboxes.forEach(cb => cb.checked = false);
-
-                    // 3. (可选) 给个小提示或者动画效果
-                    // alert("太棒了！第 " + roundCount + " 轮背诵完成！"); 
-                }, 300); // 300毫秒延迟
+                    saveData(); // 轮数变了，列表重置了，赶紧保存
+                }, 300); 
             }
         }
 
-        // 计数归零
         function resetRounds() {
             if(confirm('确定要将轮次计数清零吗？')) {
                 roundCount = 0;
                 roundDisplay.innerText = 0;
+                saveData(); // 保存！
             }
         }
 
-        // 删除列表
         function clearList() {
             if(confirm('确定要删除当前所有列表项吗？')) {
                 listContainer.innerHTML = '';
-                showInput(); // 恢复输入框
+                showInput(); 
                 clearBtn.style.display = 'none';
+                saveData(); // 保存为空状态
             }
         }
 
-        // 恢复显示输入框
         function showInput() {
             inputArea.classList.remove('hidden');
             showInputBtn.classList.add('hidden');
+            saveData(); // 状态变了，保存
         }
+
+        // === 4. 程序入口 ===
+        // 页面加载完毕后，立即读取数据
+        window.onload = loadData;
+
     </script>
 </body>
 </html>
