@@ -404,396 +404,398 @@
 </head>
 
 <body>
-    <div id="loading-mask">
-        <div class="spinner"></div>
-    </div>
 
-    <div class="main-container">
-        <a href="../index.html" class="btn-back">← 返回仪表盘</a>
-        <div class="dashboard">
-            <div class="instance-id-tag" id="debug-id"></div>
-
-            <div class="widget-title" id="page-title">背诵轮次</div>
-            <div class="round-count" id="round-display">0</div>
-
-            <div class="progress-section" id="progress-area" style="display:none;">
-                <div class="progress-info">
-                    <span id="progress-text">进度</span>
-                    <span id="progress-percent">0%</span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill" id="progress-bar"></div>
-                </div>
-            </div>
-
-            <div class="controls">
-                <button class="btn-reset" id="btn-reset">归零</button>
-                <button class="btn-clear" id="btn-clear" style="display:none;">删除 (双击)</button>
-            </div>
+    <body>
+        <div id="loading-mask" style="display: flex;">
+            <div class="spinner"></div>
         </div>
 
-        <div class="input-section" id="input-area">
-            <textarea id="source-text" placeholder="在此处粘贴你的清单...
+        <div class="main-container">
+            <div class="dashboard">
+                <a href="../index.html" class="btn-back">← 返回仪表盘</a>
+                <div class="instance-id-tag" id="debug-id"></div>
+
+                <div class="widget-title" id="page-title">背诵轮次</div>
+                <div class="round-count" id="round-display">0</div>
+
+                <div class="progress-section" id="progress-area" style="display:none;">
+                    <div class="progress-info">
+                        <span id="progress-text">进度</span>
+                        <span id="progress-percent">0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progress-bar"></div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn-reset" id="btn-reset">归零</button>
+                    <button class="btn-clear" id="btn-clear" style="display:none;">删除 (双击)</button>
+                </div>
+            </div>
+
+            <div class="input-section" id="input-area">
+                <textarea id="source-text" placeholder="在此处粘贴你的清单...
 (支持换行、逗号分隔)"></textarea>
-            <button class="btn-generate" onclick="generateList()">开始生成</button>
+                <button class="btn-generate" onclick="generateList()">开始生成</button>
+            </div>
+
+            <div id="todo-list"></div>
+
+            <button id="show-input-btn" class="hidden" onclick="showInput()">+ 添加/修改清单</button>
+
+            <div class="footer-info">v5.2 修复版</div>
         </div>
 
-        <div id="todo-list"></div>
+        <div class="emergency-reset" onclick="hardReset()" title="点击强制重置数据"></div>
 
-        <button id="show-input-btn" class="hidden" onclick="showInput()">+ 添加/修改清单</button>
+        <script type="module">
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+            import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+            import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
-        <div class="footer-info">v5.2 修复版</div>
-    </div>
+            // === Firebase Config ===
+            // TODO: Replace with your Firebase project config
+            const firebaseConfig = {
+                apiKey: "AIzaSyAyzdr7PnbRw5oyoXQN05JSAEEZFbxBI4Q",
+                authDomain: "recite-flow-cloud.firebaseapp.com",
+                projectId: "recite-flow-cloud",
+                storageBucket: "recite-flow-cloud.firebasestorage.app",
+                messagingSenderId: "782100544476",
+                appId: "1:782100544476:web:08d5016464513f2d872d19",
+                measurementId: "G-7MHQLT80LD"
+            };
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+            const provider = new GoogleAuthProvider();
 
-    <div class="emergency-reset" onclick="hardReset()" title="点击强制重置数据"></div>
+            // === UI Elements for Auth ===
+            const dashboard = document.querySelector('.dashboard');
+            const loginBtn = document.createElement('button');
+            loginBtn.innerText = 'Google 登录';
+            loginBtn.className = 'btn-generate'; // reuse existing style
+            loginBtn.style.marginBottom = '15px';
+            loginBtn.style.background = '#4285F4';
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+            const loginStatus = document.createElement('div');
+            loginStatus.style.fontSize = '12px';
+            loginStatus.style.marginBottom = '10px';
+            loginStatus.style.color = '#666';
+            loginStatus.innerText = '未登录';
 
-        // === Firebase Config ===
-        // TODO: Replace with your Firebase project config
-        const firebaseConfig = {
-            apiKey: "AIzaSyAyzdr7PnbRw5oyoXQN05JSAEEZFbxBI4Q",
-            authDomain: "recite-flow-cloud.firebaseapp.com",
-            projectId: "recite-flow-cloud",
-            storageBucket: "recite-flow-cloud.firebasestorage.app",
-            messagingSenderId: "782100544476",
-            appId: "1:782100544476:web:08d5016464513f2d872d19",
-            measurementId: "G-7MHQLT80LD"
-        };
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
+            // Insert Auth UI at the top of dashboard
+            dashboard.insertBefore(loginStatus, dashboard.firstChild);
+            dashboard.insertBefore(loginBtn, dashboard.firstChild);
 
-        // === UI Elements for Auth ===
-        const dashboard = document.querySelector('.dashboard');
-        const loginBtn = document.createElement('button');
-        loginBtn.innerText = 'Google 登录';
-        loginBtn.className = 'btn-generate'; // reuse existing style
-        loginBtn.style.marginBottom = '15px';
-        loginBtn.style.background = '#4285F4';
+            let currentUser = null;
 
-        const loginStatus = document.createElement('div');
-        loginStatus.style.fontSize = '12px';
-        loginStatus.style.marginBottom = '10px';
-        loginStatus.style.color = '#666';
-        loginStatus.innerText = '未登录';
+            loginBtn.onclick = () => {
+                signInWithPopup(auth, provider)
+                    .then((result) => {
+                        console.log("Logged in:", result.user.uid);
+                    }).catch((error) => {
+                        console.error("Login failed", error);
+                        alert("登录失败: " + error.message);
+                    });
+            };
 
-        // Insert Auth UI at the top of dashboard
-        dashboard.insertBefore(loginStatus, dashboard.firstChild);
-        dashboard.insertBefore(loginBtn, dashboard.firstChild);
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    loginBtn.style.display = 'none';
+                    loginStatus.innerText = '已登录';
+                    loadData(); // Load data after login
+                } else {
+                    currentUser = null;
+                    loginBtn.style.display = 'block';
+                    loginStatus.innerText = '未登录';
+                    hideLoadingMask(); // Not logged in -> show login UI
+                }
+            });
 
-        let currentUser = null;
-
-        loginBtn.onclick = () => {
-            signInWithPopup(auth, provider)
-                .then((result) => {
-                    console.log("Logged in:", result.user.uid);
-                }).catch((error) => {
-                    console.error("Login failed", error);
-                    alert("登录失败: " + error.message);
-                });
-        };
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                loginBtn.style.display = 'none';
-                loginStatus.innerText = '已登录';
-                loadData(); // Load data after login
-            } else {
-                currentUser = null;
-                loginBtn.style.display = 'block';
-                loginStatus.innerText = '未登录';
-                hideLoadingMask(); // Not logged in -> show login UI
-            }
-        });
-
-        const loadingMask = document.getElementById('loading-mask');
-        function hideLoadingMask() {
-            if (loadingMask) {
-                loadingMask.style.opacity = '0';
-                setTimeout(() => loadingMask.style.display = 'none', 300);
-            }
-        }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const instanceId = urlParams.get('id') || 'default';
-        const customTitle = urlParams.get('title');
-
-        // Construct Firestore Path
-        // User requested path: /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock
-        // We append /lists/{instanceId} to make it a valid document path for this specific list.
-        // NOTE: Firestore requires alternating Collection/Document segments. 
-        // We will assume the user wanted this logic path, mapping it to:
-        // Collection: 'notion-clock-data' -> Document: {instanceId} 
-        // OR better yet, let's try to follow their path literally if possible by hashing or just using it as a string key?
-        // No, `setDoc` needs a reference. 
-        // Let's use a safe adaptation:
-        const BASE_PATH = "antigravity-apps/wangyuchen/notion-clock";
-        // We'll use this structure: collection("antigravity-apps").doc("wangyuchen").collection("notion-clock").doc(instanceId)
-
-        // Wait, to strictly follow "Save to /Users/..." I will use that string as the Document ID in a collection called 'filestore' or similar? 
-        // The prompt says: "存储路径：请将数据存放在 /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock这个路径下"
-        // This likely means they want the DOCUMENT path to be effectively that.
-        // I will use:
-        // doc(db, "user_data", "wangyuchen_clock") 
-        // But we have `instanceId`.
-        // Let's just define a clean Collection for this app.
-        const COLLECTION_NAME = "notion_todolist_data";
-
-        // Ref: "存储路径：请将数据存放在 /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock这个路径下。"
-        // Since this is a Firestore path request, I'll generate the doc ref based on this.
-        // But that path is 6 segments?
-        // Users (col) -> wangyuchen (doc) -> .gemini (col) -> antigravity (doc) -> scratch (col) -> notion-clock (doc)
-        // That is actually a valid Firestore path (6 segments)!
-        // So I will use exactly that path for the default instance, or append /lists/{id} if needed.
-        // Since `instanceId` varies, I'll assume that path is the ROOT for this list, or the document itself?
-        // "这个路径下" implies it's a directory/collection. 
-        // I will treat it as a Collection Reference path? No, setDoc needs a Doc Ref.
-        // I will assume the path is the DOCUMENT path for the 'default' list.
-        // If instanceId is different, I might need to append.
-        // Let's use: /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock/lists/{instanceId}
-        // That makes 8 segments. Valid.
-
-        const DOC_PATH = `/Users/wangyuchen/.gemini/antigravity/scratch/notion-clock/lists/${instanceId}`;
-
-        if (customTitle) document.getElementById('page-title').innerText = decodeURIComponent(customTitle);
-        if (instanceId !== 'default') document.getElementById('debug-id').innerText = instanceId;
-
-        let roundCount = 0;
-        const roundDisplay = document.getElementById('round-display');
-        const listContainer = document.getElementById('todo-list');
-        const inputArea = document.getElementById('input-area');
-        const clearBtn = document.getElementById('btn-clear');
-        const resetBtn = document.getElementById('btn-reset');
-        const showInputBtn = document.getElementById('show-input-btn');
-        const sourceTextArea = document.getElementById('source-text');
-
-        const progressArea = document.getElementById('progress-area');
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        const progressPercent = document.getElementById('progress-percent');
-
-        // === 核心逻辑 ===
-        async function saveData() {
-            if (!currentUser) {
-                console.log("Skipping save: Not logged in");
-                return;
+            const loadingMask = document.getElementById('loading-mask');
+            function hideLoadingMask() {
+                if (loadingMask) {
+                    loadingMask.style.opacity = '0';
+                    setTimeout(() => loadingMask.style.display = 'none', 300);
+                }
             }
 
-            console.log("Attempting to save to:", DOC_PATH);
+            const urlParams = new URLSearchParams(window.location.search);
+            const instanceId = urlParams.get('id') || 'default';
+            const customTitle = urlParams.get('title');
 
-            try {
-                // 1. 保存勾选状态到 HTML 属性中 (Persist checkboxes)
-                const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
-                checkboxes.forEach(cb => {
-                    if (cb.checked) {
-                        cb.setAttribute('checked', 'checked');
-                    } else {
-                        cb.removeAttribute('checked');
-                    }
-                });
+            // Construct Firestore Path
+            // User requested path: /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock
+            // We append /lists/{instanceId} to make it a valid document path for this specific list.
+            // NOTE: Firestore requires alternating Collection/Document segments. 
+            // We will assume the user wanted this logic path, mapping it to:
+            // Collection: 'notion-clock-data' -> Document: {instanceId} 
+            // OR better yet, let's try to follow their path literally if possible by hashing or just using it as a string key?
+            // No, `setDoc` needs a reference. 
+            // Let's use a safe adaptation:
+            const BASE_PATH = "antigravity-apps/wangyuchen/notion-clock";
+            // We'll use this structure: collection("antigravity-apps").doc("wangyuchen").collection("notion-clock").doc(instanceId)
 
-                const data = {
-                    title: document.getElementById('page-title').innerText, // Save Field: Title
-                    round: roundCount,
-                    listHtml: listContainer.innerHTML,
-                    isInputHidden: inputArea.classList.contains('hidden'),
-                    rawText: sourceTextArea.value,
-                    updatedAt: new Date()
-                };
+            // Wait, to strictly follow "Save to /Users/..." I will use that string as the Document ID in a collection called 'filestore' or similar? 
+            // The prompt says: "存储路径：请将数据存放在 /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock这个路径下"
+            // This likely means they want the DOCUMENT path to be effectively that.
+            // I will use:
+            // doc(db, "user_data", "wangyuchen_clock") 
+            // But we have `instanceId`.
+            // Let's just define a clean Collection for this app.
+            const COLLECTION_NAME = "notion_todolist_data";
 
-                // Firestore save
-                await setDoc(doc(db, DOC_PATH), data);
-                console.log("SUCCESS: Saved to Firestore at", DOC_PATH);
+            // Ref: "存储路径：请将数据存放在 /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock这个路径下。"
+            // Since this is a Firestore path request, I'll generate the doc ref based on this.
+            // But that path is 6 segments?
+            // Users (col) -> wangyuchen (doc) -> .gemini (col) -> antigravity (doc) -> scratch (col) -> notion-clock (doc)
+            // That is actually a valid Firestore path (6 segments)!
+            // So I will use exactly that path for the default instance, or append /lists/{id} if needed.
+            // Since `instanceId` varies, I'll assume that path is the ROOT for this list, or the document itself?
+            // "这个路径下" implies it's a directory/collection. 
+            // I will treat it as a Collection Reference path? No, setDoc needs a Doc Ref.
+            // I will assume the path is the DOCUMENT path for the 'default' list.
+            // If instanceId is different, I might need to append.
+            // Let's use: /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock/lists/{instanceId}
+            // That makes 8 segments. Valid.
 
-            } catch (e) {
-                console.error("Save error details:", e);
-                alert("保存失败 (Save Error):\n" + e.message + "\n\n请检查控制台 (F12) 获取更多信息。");
-            }
-        }
+            const DOC_PATH = `/Users/wangyuchen/.gemini/antigravity/scratch/notion-clock/lists/${instanceId}`;
 
-        let unsubscribe = null;
+            if (customTitle) document.getElementById('page-title').innerText = decodeURIComponent(customTitle);
+            if (instanceId !== 'default') document.getElementById('debug-id').innerText = instanceId;
 
-        function loadData() {
-            if (!currentUser) return;
-            if (unsubscribe) unsubscribe(); // Unsubscribe previous listener if any
+            let roundCount = 0;
+            const roundDisplay = document.getElementById('round-display');
+            const listContainer = document.getElementById('todo-list');
+            const inputArea = document.getElementById('input-area');
+            const clearBtn = document.getElementById('btn-clear');
+            const resetBtn = document.getElementById('btn-reset');
+            const showInputBtn = document.getElementById('show-input-btn');
+            const sourceTextArea = document.getElementById('source-text');
 
-            try {
-                // Firestore Real-time Sync
-                unsubscribe = onSnapshot(doc(db, DOC_PATH), (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        console.log("Received data update");
+            const progressArea = document.getElementById('progress-area');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const progressPercent = document.getElementById('progress-percent');
 
-                        // Apply data
-                        roundCount = data.round || 0;
-                        roundDisplay.innerText = roundCount;
+            // === 核心逻辑 ===
+            async function saveData() {
+                if (!currentUser) {
+                    console.log("Skipping save: Not logged in");
+                    return;
+                }
 
-                        // Avoid overwriting if we are currently editing? 
-                        // For simplicity, we accept the cloud truth.
+                console.log("Attempting to save to:", DOC_PATH);
 
-                        if (data.listHtml) {
-                            // Only update innerHTML if it's different to avoid losing focus if typing?
-                            // But here we are just checkboxes.
-                            if (listContainer.innerHTML !== data.listHtml) {
-                                listContainer.innerHTML = data.listHtml;
-                                // Re-attach event listeners for checkboxes because innerHTML replacement kills them?
-                                // Actually yes, the onchange="checkProgress()" attribute is in HTML strings so it works.
-                                // But we might lose DOM state if not careful.
-                            }
-                        }
-
-                        if (data.rawText) sourceTextArea.value = data.rawText;
-
-                        // UI Logic
-                        const hasValidContent = data.listHtml && data.listHtml.includes('todo-item');
-                        if (data.isInputHidden && hasValidContent) {
-                            inputArea.classList.add('hidden');
-                            showInputBtn.classList.remove('hidden');
-                            clearBtn.style.display = 'block';
+                try {
+                    // 1. 保存勾选状态到 HTML 属性中 (Persist checkboxes)
+                    const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+                    checkboxes.forEach(cb => {
+                        if (cb.checked) {
+                            cb.setAttribute('checked', 'checked');
                         } else {
+                            cb.removeAttribute('checked');
+                        }
+                    });
+
+                    const data = {
+                        title: document.getElementById('page-title').innerText, // Save Field: Title
+                        round: roundCount,
+                        listHtml: listContainer.innerHTML,
+                        isInputHidden: inputArea.classList.contains('hidden'),
+                        rawText: sourceTextArea.value,
+                        updatedAt: new Date()
+                    };
+
+                    // Firestore save
+                    await setDoc(doc(db, DOC_PATH), data);
+                    console.log("SUCCESS: Saved to Firestore at", DOC_PATH);
+
+                } catch (e) {
+                    console.error("Save error details:", e);
+                    alert("保存失败 (Save Error):\n" + e.message + "\n\n请检查控制台 (F12) 获取更多信息。");
+                }
+            }
+
+            let unsubscribe = null;
+
+            function loadData() {
+                if (!currentUser) return;
+                if (unsubscribe) unsubscribe(); // Unsubscribe previous listener if any
+
+                try {
+                    // Firestore Real-time Sync
+                    unsubscribe = onSnapshot(doc(db, DOC_PATH), (docSnap) => {
+                        if (docSnap.exists()) {
+                            const data = docSnap.data();
+                            console.log("Received data update");
+
+                            // Apply data
+                            roundCount = data.round || 0;
+                            roundDisplay.innerText = roundCount;
+
+                            // Avoid overwriting if we are currently editing? 
+                            // For simplicity, we accept the cloud truth.
+
+                            if (data.listHtml) {
+                                // Only update innerHTML if it's different to avoid losing focus if typing?
+                                // But here we are just checkboxes.
+                                if (listContainer.innerHTML !== data.listHtml) {
+                                    listContainer.innerHTML = data.listHtml;
+                                    // Re-attach event listeners for checkboxes because innerHTML replacement kills them?
+                                    // Actually yes, the onchange="checkProgress()" attribute is in HTML strings so it works.
+                                    // But we might lose DOM state if not careful.
+                                }
+                            }
+
+                            if (data.rawText) sourceTextArea.value = data.rawText;
+
+                            // UI Logic
+                            const hasValidContent = data.listHtml && data.listHtml.includes('todo-item');
+                            if (data.isInputHidden && hasValidContent) {
+                                inputArea.classList.add('hidden');
+                                showInputBtn.classList.remove('hidden');
+                                clearBtn.style.display = 'block';
+                            } else {
+                                showInput();
+                            }
+
+                            // Recalculate stats based on loaded HTML
+                            updateStats(false); // don't trigger save loop
+
+                        } else {
+                            console.log("No such document!");
                             showInput();
                         }
+                        hideLoadingMask(); // Loaded
+                    }, (error) => {
+                        console.error("Sync failed", error);
+                        hideLoadingMask(); // Error -> show what we have
+                    });
 
-                        // Recalculate stats based on loaded HTML
-                        updateStats(false); // don't trigger save loop
-
-                    } else {
-                        console.log("No such document!");
-                        showInput();
-                    }
-                    hideLoadingMask(); // Loaded
-                }, (error) => {
-                    console.error("Sync failed", error);
-                    hideLoadingMask(); // Error -> show what we have
-                });
-
-            } catch (e) {
-                console.error("Load crashed", e);
-                showInput();
-            }
-        }
-
-        // Updated helper to avoid infinite save loops
-        function updateStats(shouldSave = true) {
-            const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
-            const total = checkboxes.length;
-
-            if (total === 0) {
-                progressArea.style.display = 'none';
-                return;
+                } catch (e) {
+                    console.error("Load crashed", e);
+                    showInput();
+                }
             }
 
-            progressArea.style.display = 'block';
+            // Updated helper to avoid infinite save loops
+            function updateStats(shouldSave = true) {
+                const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+                const total = checkboxes.length;
 
-            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-            const percent = Math.round((checkedCount / total) * 100);
+                if (total === 0) {
+                    progressArea.style.display = 'none';
+                    return;
+                }
 
-            progressText.innerText = `${checkedCount} / ${total}`;
-            progressPercent.innerText = `${percent}%`;
-            progressBar.style.width = `${percent}%`;
+                progressArea.style.display = 'block';
 
-            if (percent === 100) {
-                progressBar.classList.add('completed');
-            } else {
-                progressBar.classList.remove('completed');
+                const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+                const percent = Math.round((checkedCount / total) * 100);
+
+                progressText.innerText = `${checkedCount} / ${total}`;
+                progressPercent.innerText = `${percent}%`;
+                progressBar.style.width = `${percent}%`;
+
+                if (percent === 100) {
+                    progressBar.classList.add('completed');
+                } else {
+                    progressBar.classList.remove('completed');
+                }
             }
-        }
 
-        // Attach global scope functions for HTML event handlers
-        window.generateList = function () {
-            const text = sourceTextArea.value;
-            if (!text.trim()) return;
+            // Attach global scope functions for HTML event handlers
+            window.generateList = function () {
+                const text = sourceTextArea.value;
+                if (!text.trim()) return;
 
-            inputArea.classList.add('hidden');
-            showInputBtn.classList.remove('hidden');
-            clearBtn.style.display = 'block';
+                inputArea.classList.add('hidden');
+                showInputBtn.classList.remove('hidden');
+                clearBtn.style.display = 'block';
 
-            listContainer.innerHTML = '';
-            const lines = text.split(/[\n,，]/).map(t => t.trim()).filter(t => t.length > 0);
+                listContainer.innerHTML = '';
+                const lines = text.split(/[\n,，]/).map(t => t.trim()).filter(t => t.length > 0);
 
-            lines.forEach((line, index) => {
-                const item = document.createElement('div');
-                item.className = 'todo-item';
-                const id = 'item-' + index + '-' + Date.now();
-                item.innerHTML = `
+                lines.forEach((line, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'todo-item';
+                    const id = 'item-' + index + '-' + Date.now();
+                    item.innerHTML = `
                     <input type="checkbox" id="${id}" onchange="checkProgress()">
                     <label for="${id}">${line}</label>
                 `;
-                listContainer.appendChild(item);
+                    listContainer.appendChild(item);
+                });
+
+                updateStats(false);
+                saveData();
+            }
+
+            window.checkProgress = function () {
+                const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+                if (checkboxes.length === 0) return;
+
+                updateStats(false);
+                saveData(); // Save on click
+
+                const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+                if (checkedCount === checkboxes.length) {
+                    setTimeout(() => {
+                        roundCount++;
+                        roundDisplay.innerText = roundCount;
+
+                        checkboxes.forEach(cb => {
+                            cb.checked = false;
+                            cb.removeAttribute('checked');
+                        });
+
+                        updateStats(false);
+                        saveData();
+                    }, 500);
+                }
+            }
+
+            window.showInput = function () {
+                inputArea.classList.remove('hidden');
+                showInputBtn.classList.add('hidden');
+                if (!listContainer.innerHTML.trim()) {
+                    clearBtn.style.display = 'none';
+                    progressArea.style.display = 'none';
+                }
+                saveData();
+            }
+
+            window.hardReset = function () {
+                if (confirm('页面出现故障？点确定将重置数据。')) {
+                    // Hard reset just clears local UI and tries to save empty state
+                    // localStorage.removeItem(STORAGE_KEY); // No longer used
+                    location.reload();
+                }
+            }
+
+            resetBtn.addEventListener('click', function () {
+                roundCount = 0;
+                roundDisplay.innerText = 0;
+                saveData();
+                const originalText = this.innerText;
+                this.innerText = "OK";
+                setTimeout(() => { this.innerText = originalText; }, 1000);
             });
 
-            updateStats(false);
-            saveData();
-        }
-
-        window.checkProgress = function () {
-            const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
-            if (checkboxes.length === 0) return;
-
-            updateStats(false);
-            saveData(); // Save on click
-
-            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-
-            if (checkedCount === checkboxes.length) {
-                setTimeout(() => {
-                    roundCount++;
-                    roundDisplay.innerText = roundCount;
-
-                    checkboxes.forEach(cb => {
-                        cb.checked = false;
-                        cb.removeAttribute('checked');
-                    });
-
-                    updateStats(false);
-                    saveData();
-                }, 500);
-            }
-        }
-
-        window.showInput = function () {
-            inputArea.classList.remove('hidden');
-            showInputBtn.classList.add('hidden');
-            if (!listContainer.innerHTML.trim()) {
+            clearBtn.addEventListener('dblclick', function () {
+                listContainer.innerHTML = '';
+                showInput();
                 clearBtn.style.display = 'none';
                 progressArea.style.display = 'none';
-            }
-            saveData();
-        }
+                saveData();
+            });
 
-        window.hardReset = function () {
-            if (confirm('页面出现故障？点确定将重置数据。')) {
-                // Hard reset just clears local UI and tries to save empty state
-                // localStorage.removeItem(STORAGE_KEY); // No longer used
-                location.reload();
-            }
-        }
-
-        resetBtn.addEventListener('click', function () {
-            roundCount = 0;
-            roundDisplay.innerText = 0;
-            saveData();
-            const originalText = this.innerText;
-            this.innerText = "OK";
-            setTimeout(() => { this.innerText = originalText; }, 1000);
-        });
-
-        clearBtn.addEventListener('dblclick', function () {
-            listContainer.innerHTML = '';
-            showInput();
-            clearBtn.style.display = 'none';
-            progressArea.style.display = 'none';
-            saveData();
-        });
-
-        // window.onload = loadData; // Handled by onAuthStateChanged
-    </script>
-</body>
+            // window.onload = loadData; // Handled by onAuthStateChanged
+        </script>
+    </body>
 
 </html>
