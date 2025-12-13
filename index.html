@@ -26,6 +26,44 @@
             align-items: center;
         }
 
+        /* --- 新增布局样式 (Layout) --- */
+        .dashboard-layout {
+            display: flex;
+            gap: 24px;
+            width: 100%;
+            max-width: 1000px;
+            /* 调宽页面以容纳双栏 */
+            align-items: flex-start;
+            /* 顶部对齐 */
+        }
+
+        .left-column {
+            flex: 1;
+            /* 占据剩余空间 */
+            min-width: 0;
+            /* 防止图表撑破容器 */
+        }
+
+        .right-column {
+            width: 280px;
+            /* 固定宽度 */
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* 响应式：手机端变回垂直堆叠 */
+        @media (max-width: 768px) {
+            .dashboard-layout {
+                flex-direction: column;
+            }
+
+            .right-column {
+                width: 100%;
+            }
+        }
+
         h1 {
             font-size: 20px;
             margin-bottom: 20px;
@@ -37,7 +75,6 @@
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
             width: 100%;
-            max-width: 600px;
         }
 
         .card {
@@ -105,11 +142,120 @@
             justify-content: space-between;
         }
 
+        /* --- 右侧待办事项样式 --- */
+        .todo-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .todo-header {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .todo-input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .todo-input {
+            flex: 1;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .todo-input:focus {
+            border-color: var(--accent);
+        }
+
+        .todo-add-btn {
+            padding: 6px 10px;
+            background: var(--text-main);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .todo-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+
+        .todo-item:last-child {
+            border-bottom: none;
+        }
+
+        .todo-checkbox {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .todo-text {
+            flex: 1;
+        }
+
+        .todo-empty {
+            text-align: center;
+            color: #aaa;
+            font-size: 12px;
+            padding: 20px 0;
+        }
+
+        .todo-delete-btn {
+            background: none;
+            border: none;
+            color: #ff4d4f;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 5px;
+            margin-left: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .todo-item:hover .todo-delete-btn {
+            opacity: 1;
+        }
+
         @media (prefers-color-scheme: dark) {
             :root {
                 --card-bg: rgba(40, 40, 40, 0.9);
                 --text-main: #fff;
                 --text-sub: #aaa;
+            }
+
+            .todo-input {
+                background: #333;
+                border-color: #555;
+                color: white;
             }
         }
 
@@ -153,22 +299,73 @@
             }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
     <div id="loading-mask">
         <div class="spinner"></div>
     </div>
-    <h1>📚 复习全景图</h1>
-    <div class="grid-container" id="card-grid"></div>
+
+    <div style="width: 100%; max-width: 1000px; margin-bottom: 20px; display: flex; align-items: center;">
+        <h1 style="margin: 0;">📚 复习全景图</h1>
+        <span id="todo-badge"
+            style="background: #eb5757; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 10px; opacity: 0; transition: opacity 0.3s;">0</span>
+    </div>
+
+    <div class="dashboard-layout">
+        <div class="left-column">
+            <div id="chart-container"
+                style="width: 100%; margin-bottom: 20px; background: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); box-sizing: border-box;">
+                <canvas id="dailyStatsChart" style="height: 250px;"></canvas>
+            </div>
+
+            <div class="grid-container" id="card-grid"></div>
+        </div>
+
+        <div class="right-column">
+            <div class="todo-card">
+                <div class="todo-header">
+                    📝 今日待办 (To-Do)
+                </div>
+                <div class="todo-input-group">
+                    <input type="text" class="todo-input" id="quick-todo-input" placeholder="添加新任务...">
+                    <button class="todo-add-btn" id="quick-todo-btn">+</button>
+                </div>
+                <ul class="todo-list" id="quick-todo-list">
+                    <div class="todo-empty">暂无待办</div>
+                </ul>
+            </div>
+        </div>
+
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-        import { getFirestore, doc, collection, onSnapshot, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        import {
+            getFirestore,
+            doc,
+            collection,
+            onSnapshot,
+            deleteDoc,
+            getDocs,
+            addDoc,
+            updateDoc,
+            query,
+            orderBy,
+            where
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        import {
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            onAuthStateChanged,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
         // === Firebase Config ===
-        // TODO: 请填入与 todo/index.html 相同的配置 (Please use the same config as todo/index.html)
         const firebaseConfig = {
             apiKey: "AIzaSyAyzdr7PnbRw5oyoXQN05JSAEEZFbxBI4Q",
             authDomain: "recite-flow-cloud.firebaseapp.com",
@@ -188,7 +385,7 @@
         const bodyTag = document.body;
         const headerDiv = document.createElement('div');
         headerDiv.style.width = '100%';
-        headerDiv.style.maxWidth = '600px';
+        headerDiv.style.maxWidth = '1000px'; // 调整宽度以匹配 dashboard-layout
         headerDiv.style.display = 'flex';
         headerDiv.style.flexDirection = 'row';
         headerDiv.style.justifyContent = 'space-between';
@@ -200,9 +397,9 @@
         authContainer.style.display = 'flex';
         authContainer.style.gap = '8px';
         authContainer.style.alignItems = 'center';
-        authContainer.style.background = '#f7f7f7'; // Lighter background
+        authContainer.style.background = '#f7f7f7';
         authContainer.style.padding = '6px 12px';
-        authContainer.style.borderRadius = '30px'; // Fully rounded container
+        authContainer.style.borderRadius = '30px';
         authContainer.style.boxShadow = '0 2px 6px rgba(0,0,0,0.05)';
 
         // Common Input Style
@@ -247,6 +444,7 @@
                 btn.style.background = '#fff';
                 btn.style.color = '#555';
                 btn.style.border = '1px solid #e0e0e0';
+
                 btn.onmouseenter = () => {
                     btn.style.background = '#f5f5f5';
                     btn.style.borderColor = '#ccc';
@@ -261,13 +459,10 @@
         // Buttons
         const loginBtn = document.createElement('button');
         loginBtn.innerText = '登录';
-        btnStyle(loginBtn); // Secondary style
+        btnStyle(loginBtn, true);
 
         const registerBtn = document.createElement('button');
         registerBtn.innerText = '注册';
-        btnStyle(registerBtn, true); // Primary style for Register to encourage it? Or maybe keep both plain?
-        // Let's make "Login" primary actually, usually more common action.
-        btnStyle(loginBtn, true);
         btnStyle(registerBtn, false);
 
         // Error Msg
@@ -303,7 +498,7 @@
             logoutBtn.style.borderColor = '#ddd';
         };
 
-        // Add "New Subject" Button (Green one)
+        // Add "New Subject" Button
         const newSubjectBtn = document.createElement('button');
         newSubjectBtn.innerText = '+ 新建科目';
         newSubjectBtn.style.padding = '8px 16px';
@@ -313,13 +508,9 @@
         newSubjectBtn.style.borderRadius = '6px';
         newSubjectBtn.style.cursor = 'pointer';
         newSubjectBtn.style.fontSize = '14px';
-        newSubjectBtn.style.display = 'none'; // Hidden until login
-        newSubjectBtn.style.alignSelf = 'flex-start'; // Left align this one independently if needed, or put in correct layout
+        newSubjectBtn.style.display = 'none';
+        newSubjectBtn.style.alignSelf = 'flex-start';
         newSubjectBtn.style.marginBottom = '10px';
-
-        // Assemble Header
-        // We want New Subject on Left (or separate), Auth on Right.
-        // Let's restructure headerDiv slightly to be a row.
 
         authContainer.appendChild(emailInput);
         authContainer.appendChild(passInput);
@@ -337,7 +528,7 @@
         rightSide.style.flexDirection = 'column';
         rightSide.style.alignItems = 'flex-end';
         rightSide.appendChild(authContainer);
-        rightSide.appendChild(userContainer); // Will only show one of these
+        rightSide.appendChild(userContainer);
         rightSide.appendChild(errorMsg);
 
         headerDiv.appendChild(newSubjectBtn);
@@ -350,7 +541,6 @@
         let currentUser = null;
 
         // === Auth Logic ===
-
         const showError = (msg) => {
             errorMsg.innerText = msg;
             errorMsg.style.display = 'block';
@@ -362,13 +552,11 @@
             const pass = passInput.value;
             if (!email || !pass) return showError("请输入邮箱和密码");
 
-            signInWithEmailAndPassword(auth, email, pass)
-                .then((cred) => {
-                    console.log("Logged in:", cred.user.uid);
-                    emailInput.value = '';
-                    passInput.value = '';
-                })
-                .catch((error) => showError(error.message));
+            signInWithEmailAndPassword(auth, email, pass).then((cred) => {
+                console.log("Logged in:", cred.user.uid);
+                emailInput.value = '';
+                passInput.value = '';
+            }).catch((error) => showError(error.message));
         };
 
         registerBtn.onclick = () => {
@@ -376,13 +564,11 @@
             const pass = passInput.value;
             if (!email || !pass) return showError("请输入邮箱和密码");
 
-            createUserWithEmailAndPassword(auth, email, pass)
-                .then((cred) => {
-                    console.log("Registered:", cred.user.uid);
-                    emailInput.value = '';
-                    passInput.value = '';
-                })
-                .catch((error) => showError(error.message));
+            createUserWithEmailAndPassword(auth, email, pass).then((cred) => {
+                console.log("Registered:", cred.user.uid);
+                emailInput.value = '';
+                passInput.value = '';
+            }).catch((error) => showError(error.message));
         };
 
         logoutBtn.onclick = () => {
@@ -390,18 +576,137 @@
         };
 
         // New Subject Logic
+        const modal = document.getElementById('new-subject-modal');
+        const modalInput = document.getElementById('new-subject-input');
+        const cancelBtn = document.getElementById('cancel-subject-btn');
+        const confirmBtn = document.getElementById('confirm-subject-btn');
+
         newSubjectBtn.onclick = () => {
-            const name = prompt("请输入新科目名称：");
+            modal.style.display = 'flex';
+            modalInput.value = ''; // Reset
+            modalInput.focus();
+        };
+
+        const createSubject = () => {
+            const name = modalInput.value;
             if (name && name.trim()) {
                 const id = 'list_' + Date.now();
-                // Redirect to create it
                 window.open(`./todo/index.html?id=${id}&title=${encodeURIComponent(name)}`, '_blank');
+                modal.style.display = 'none';
+            } else {
+                alert("请输入科目名称");
             }
+        };
+
+        confirmBtn.onclick = createSubject;
+        modalInput.onkeyup = (e) => {
+            if (e.key === 'Enter') createSubject();
+        };
+        cancelBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.style.display = 'none';
+        };
+
+        // === Todo Real Logic ===
+        const todoInput = document.getElementById('quick-todo-input');
+        const todoAddBtn = document.getElementById('quick-todo-btn');
+        const todoList = document.getElementById('quick-todo-list');
+        let todoUnsubscribe = null;
+
+        const renderTodos = (snapshot) => {
+            todoList.innerHTML = '';
+            if (snapshot.empty) {
+                todoList.innerHTML = '<div class="todo-empty">暂无待办</div>';
+                return;
+            }
+            snapshot.forEach(docSnap => {
+                const item = docSnap.data();
+                const li = document.createElement('li');
+                li.className = 'todo-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'todo-checkbox';
+                checkbox.checked = item.done || false;
+                checkbox.onclick = () => {
+                    updateDoc(doc(db, `users/${currentUser.uid}/daily_todos`, docSnap.id), {
+                        done: checkbox.checked
+                    });
+                };
+
+                const span = document.createElement('span');
+                span.className = 'todo-text';
+                span.innerText = item.text;
+                if (item.done) {
+                    span.style.textDecoration = 'line-through';
+                    span.style.color = '#999';
+                }
+
+                // Add delete on double click
+                li.ondblclick = () => {
+                    if (confirm('删除此待办？')) {
+                        deleteDoc(doc(db, `users/${currentUser.uid}/daily_todos`, docSnap.id));
+                    }
+                };
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'todo-delete-btn';
+                deleteBtn.innerHTML = '&times;'; // Multiplication sign as X
+                deleteBtn.title = '删除';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm('删除此待办？')) {
+                        deleteDoc(doc(db, `users/${currentUser.uid}/daily_todos`, docSnap.id));
+                    }
+                };
+
+                li.appendChild(checkbox);
+                li.appendChild(span);
+                li.appendChild(deleteBtn);
+                todoList.appendChild(li);
+            });
+        };
+
+        const setupTodoListener = (uid) => {
+            if (todoUnsubscribe) todoUnsubscribe();
+            const todosRef = collection(db, `users/${uid}/daily_todos`);
+            const q = query(todosRef, orderBy('createdAt', 'desc'));
+
+            todoUnsubscribe = onSnapshot(q, (snapshot) => {
+                renderTodos(snapshot);
+            });
+        };
+
+        const addTodo = async () => {
+            const text = todoInput.value.trim();
+            if (!text || !currentUser) return;
+
+            try {
+                await addDoc(collection(db, `users/${currentUser.uid}/daily_todos`), {
+                    text: text,
+                    done: false,
+                    createdAt: Date.now()
+                });
+                todoInput.value = '';
+            } catch (e) {
+                console.error("Error adding todo:", e);
+                alert("添加失败");
+            }
+        };
+
+        todoAddBtn.onclick = addTodo;
+        todoInput.onkeyup = (e) => {
+            if (e.key === 'Enter') addTodo();
         };
 
         // Auth Listener
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
+            const chartContainer = document.getElementById('chart-container');
+            const dashboardLayout = document.querySelector('.dashboard-layout');
+
             if (user) {
                 // Show User UI
                 authContainer.style.display = 'none';
@@ -410,18 +715,54 @@
                 userInfoSpan.innerText = user.email;
                 logoutBtn.style.display = 'inline-block';
 
+                // Show Content
+                if (dashboardLayout) dashboardLayout.style.display = 'flex';
+
+                authContainer.style.position = 'static';
+                authContainer.style.transform = 'none';
+                authContainer.style.flexDirection = 'row';
+                authContainer.style.width = 'auto';
+                authContainer.style.height = 'auto';
+                authContainer.style.boxShadow = '0 2px 6px rgba(0,0,0,0.05)';
+                authContainer.style.background = '#f7f7f7';
+
+                newSubjectBtn.style.display = 'block';
                 newSubjectBtn.style.display = 'block';
                 startCollectionListener();
+                setupTodoListener(user.uid);
             } else {
-                // Show Login Form
+                // Show Login Form (Centered)
                 authContainer.style.display = 'flex';
+                authContainer.style.position = 'fixed';
+                authContainer.style.top = '50%';
+                authContainer.style.left = '50%';
+                authContainer.style.transform = 'translate(-50%, -50%)';
+                authContainer.style.flexDirection = 'column';
+                authContainer.style.gap = '15px';
+                authContainer.style.padding = '40px';
+                authContainer.style.borderRadius = '16px';
+                authContainer.style.background = 'rgba(255,255,255,0.95)';
+                authContainer.style.boxShadow = '0 10px 40px rgba(0,0,0,0.1)';
+                authContainer.style.zIndex = '1000';
+                authContainer.style.width = '300px';
+
+                emailInput.style.width = '100%';
+                passInput.style.width = '100%';
+                loginBtn.style.width = '100%';
+                registerBtn.style.width = '100%';
+
                 userContainer.style.display = 'none';
 
-                newSubjectBtn.style.display = 'none';
-                stopCollectionListener();
-                grid.innerHTML = '<div style="text-align:center;width:100%;color:#999;font-size:14px;grid-column:1/-1;">请登录或注册以管理您的科目</div>';
+                // Hide Content when not logged in
+                if (dashboardLayout) dashboardLayout.style.display = 'none';
 
-                // Not logged in -> We are ready to show UI (login form)
+                newSubjectBtn.style.display = 'none';
+                newSubjectBtn.style.display = 'none';
+                if (todoUnsubscribe) todoUnsubscribe();
+                todoList.innerHTML = '<div class="todo-empty">暂无待办</div>'; // Clear todos on logout
+                stopCollectionListener();
+                grid.innerHTML = '';
+
                 hideLoadingMask();
             }
         });
@@ -440,31 +781,35 @@
                 unsubscribeCollection = null;
             }
             grid.innerHTML = '';
+
+            // Reset Badge
+            const badge = document.getElementById('todo-badge');
+            if (badge) {
+                badge.innerText = '0';
+                badge.style.opacity = '0';
+            }
         }
 
         function startCollectionListener() {
             stopCollectionListener();
-
-            // Listen to the specific path where lists are stored
-            // Path: /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock/lists/
-            const listsCollectionPath = `/Users/wangyuchen/.gemini/antigravity/scratch/notion-clock/lists`;
+            if (!currentUser) return;
+            const listsCollectionPath = `users/${currentUser.uid}/lists`;
             const listsRef = collection(db, listsCollectionPath);
 
             grid.innerHTML = '<div style="text-align:center;width:100%;color:#999;font-size:14px;grid-column:1/-1;">正在加载...</div>';
 
             unsubscribeCollection = onSnapshot(listsRef, (snapshot) => {
-                grid.innerHTML = ''; // Clear current grid
-
+                grid.innerHTML = '';
                 if (snapshot.empty) {
                     grid.innerHTML = '<div style="text-align:center;width:100%;color:#999;font-size:14px;grid-column:1/-1;">暂无科目，点击左上角新建</div>';
-                    hideLoadingMask(); // Empty state also means we are loaded
+                    hideLoadingMask();
                     return;
                 }
 
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     const docId = docSnap.id;
-                    const title = data.title || docId; // Fallback to ID if no title
+                    const title = data.title || docId;
                     const round = data.round || 0;
 
                     // Calc Progress
@@ -482,14 +827,12 @@
 
                     const isCompleted = (percent === 100 && total > 0);
                     const progressClass = isCompleted ? 'mini-progress-fill completed' : 'mini-progress-fill';
-
                     const cardLink = `./todo/index.html?id=${docId}&title=${encodeURIComponent(title)}`;
 
                     // Create UI
-                    const card = document.createElement('div'); // Wrapper
-                    card.style.position = 'relative'; // For delete btn positioning
+                    const card = document.createElement('div');
+                    card.style.position = 'relative';
 
-                    // Content Link
                     const link = document.createElement('a');
                     link.className = 'card';
                     link.href = cardLink;
@@ -506,7 +849,6 @@
                         </div>
                     `;
 
-                    // Delete Button
                     const delBtn = document.createElement('div');
                     delBtn.innerHTML = '×';
                     delBtn.style.position = 'absolute';
@@ -521,15 +863,14 @@
                     delBtn.style.fontSize = '14px';
                     delBtn.style.color = '#fff';
                     delBtn.style.cursor = 'pointer';
-                    delBtn.style.opacity = '0'; // Hover only
+                    delBtn.style.opacity = '0';
                     delBtn.style.transition = 'opacity 0.2s';
                     delBtn.title = '删除此科目';
 
                     delBtn.onclick = (e) => {
                         e.preventDefault();
                         if (confirm(`确定要删除“${title}”吗？此操作不可恢复。`)) {
-                            deleteDoc(doc(db, listsCollectionPath, docId))
-                                .catch(err => alert("删除失败: " + err.message));
+                            deleteDoc(doc(db, listsCollectionPath, docId)).catch(err => alert("删除失败: " + err.message));
                         }
                     };
 
@@ -541,15 +882,131 @@
                     grid.appendChild(card);
                 });
 
-                hideLoadingMask(); // Data loaded
+                // Update Total Badge
+                let totalUnfinished = 0;
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (data.listHtml) {
+                        const parser = new DOMParser();
+                        const docDOM = parser.parseFromString(data.listHtml, 'text/html');
+                        const checkboxes = docDOM.querySelectorAll('input[type="checkbox"]');
+                        const checked = docDOM.querySelectorAll('input[type="checkbox"][checked]').length;
+                        totalUnfinished += (checkboxes.length - checked);
+                    }
+                });
+
+                const badge = document.getElementById('todo-badge');
+                if (badge) {
+                    badge.innerText = `${totalUnfinished} 待办`;
+                    badge.style.opacity = totalUnfinished > 0 ? '1' : '0';
+                    badge.style.background = totalUnfinished > 0 ? '#eb5757' : 'transparent';
+                }
+
+                calculateDailyStats(snapshot);
+                hideLoadingMask();
             }, (error) => {
                 console.error("Collection listener error:", error);
-                grid.innerHTML = `<div style="text-align:center;width:100%;color:red;font-size:14px;grid-column:1/-1;">加载失败: ${error.message}</div>`;
-                hideLoadingMask(); // Error also means we stop loading
+                grid.innerHTML = `<div style="text-align:center;width:100%;color:red;font-size:14px;grid-column:1/-1;" >加载失败: ${error.message}</div>`;
+                hideLoadingMask();
             });
         }
 
+        let myChart = null;
+        function calculateDailyStats(snapshot) {
+            const stats = {};
+            const subjects = new Set();
+            const today = new Date();
+            const dateLabels = [];
+
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                stats[dateStr] = {};
+                dateLabels.push(dateStr);
+            }
+
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                const title = data.title || docSnap.id;
+                subjects.add(title);
+                if (data.listHtml) {
+                    try {
+                        const parser = new DOMParser();
+                        const docDOM = parser.parseFromString(data.listHtml, 'text/html');
+                        const checkedItems = docDOM.querySelectorAll('input[type="checkbox"][checked][data-timestamp]');
+                        checkedItems.forEach(item => {
+                            const ts = parseInt(item.getAttribute('data-timestamp'));
+                            if (!isNaN(ts)) {
+                                const itemDate = new Date(ts).toISOString().split('T')[0];
+                                if (stats[itemDate]) {
+                                    if (!stats[itemDate][title]) stats[itemDate][title] = 0;
+                                    stats[itemDate][title]++;
+                                }
+                            }
+                        });
+                    } catch (e) { }
+                }
+            });
+            renderChart(dateLabels, Array.from(subjects), stats);
+        }
+
+        function renderChart(dates, subjects, statsData) {
+            const ctx = document.getElementById('dailyStatsChart');
+            if (ctx) {
+                const palette = ['#2383e2', '#2ea043', '#db61a2', '#d9730d', '#9065b0', '#0d9488', '#e03e3e', '#57606a'];
+                const datasets = subjects.map((subject, index) => {
+                    const data = dates.map(date => (statsData[date] && statsData[date][subject]) ? statsData[date][subject] : 0);
+                    const color = palette[index % palette.length];
+                    return {
+                        label: subject,
+                        data: data,
+                        backgroundColor: color,
+                        borderRadius: 3,
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.8
+                    };
+                });
+
+                const chartConfig = {
+                    type: 'bar',
+                    data: { labels: dates, datasets: datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, padding: 15, font: { family: "-apple-system, sans-serif", size: 11 }, color: '#666' } },
+                            title: { display: true, text: '近 7 天背诵统计', padding: { bottom: 20 }, font: { family: "-apple-system, sans-serif", size: 14, weight: 'normal' }, color: '#333' },
+                            tooltip: { backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#333', bodyColor: '#666', borderColor: 'rgba(0,0,0,0.05)', borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true }
+                        },
+                        scales: {
+                            x: { stacked: true, grid: { display: false, drawBorder: false }, ticks: { color: '#999', font: { size: 10 }, maxRotation: 0, autoSkip: true }, border: { display: false } },
+                            y: { stacked: true, beginAtZero: true, grid: { color: '#f0f0f0', drawBorder: false, borderDash: [4, 4] }, ticks: { stepSize: 1, color: '#ccc', font: { size: 10 }, padding: 10 }, border: { display: false } }
+                        }
+                    }
+                };
+                if (myChart) myChart.destroy();
+                myChart = new Chart(ctx, chartConfig);
+            }
+        }
     </script>
+
+    <div id="new-subject-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+        <div
+            style="background: white; padding: 25px; border-radius: 12px; width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <h3 style="margin-top: 0; margin-bottom: 15px; text-align: center;">新建科目</h3>
+            <input type="text" id="new-subject-input" placeholder="请输入科目名称"
+                style="width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between;">
+                <button id="cancel-subject-btn"
+                    style="flex: 1; margin-right: 10px; padding: 10px; border: none; background: #f0f0f0; border-radius: 6px; cursor: pointer; color: #666;">取消</button>
+                <button id="confirm-subject-btn"
+                    style="flex: 1; padding: 10px; border: none; background: #2ea043; border-radius: 6px; cursor: pointer; color: white; font-weight: bold;">创建</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

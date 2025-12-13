@@ -563,7 +563,7 @@
             // Let's use: /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock/lists/{instanceId}
             // That makes 8 segments. Valid.
 
-            const DOC_PATH = `/Users/wangyuchen/.gemini/antigravity/scratch/notion-clock/lists/${instanceId}`;
+            // Removed hardcoded DOC_PATH. We will generate it dynamically.
 
             if (customTitle) document.getElementById('page-title').innerText = decodeURIComponent(customTitle);
             if (instanceId !== 'default') document.getElementById('debug-id').innerText = instanceId;
@@ -581,6 +581,8 @@
             const progressBar = document.getElementById('progress-bar');
             const progressText = document.getElementById('progress-text');
             const progressPercent = document.getElementById('progress-percent');
+
+            // ... sound and fireworks ...
 
             // Sound Effect
             const dingSound = new Audio('../ding.MP3');
@@ -603,7 +605,6 @@
                     }
 
                     var particleCount = 50 * (timeLeft / duration);
-                    // since particles fall down, start a bit higher than random
                     confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
                     confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
                 }, 250);
@@ -620,7 +621,8 @@
                     return;
                 }
 
-                console.log("Attempting to save to:", DOC_PATH);
+                const docPath = `users/${currentUser.uid}/lists/${instanceId}`;
+                console.log("Attempting to save to:", docPath);
 
                 try {
                     // 1. 保存勾选状态到 HTML 属性中 (Persist checkboxes)
@@ -643,8 +645,8 @@
                     };
 
                     // Firestore save
-                    await setDoc(doc(db, DOC_PATH), data);
-                    console.log("SUCCESS: Saved to Firestore at", DOC_PATH);
+                    await setDoc(doc(db, docPath), data);
+                    console.log("SUCCESS: Saved to Firestore at", docPath);
 
                 } catch (e) {
                     console.error("Save error details:", e);
@@ -659,8 +661,9 @@
                 if (unsubscribe) unsubscribe(); // Unsubscribe previous listener if any
 
                 try {
+                    const docPath = `users/${currentUser.uid}/lists/${instanceId}`;
                     // Firestore Real-time Sync
-                    unsubscribe = onSnapshot(doc(db, DOC_PATH), (docSnap) => {
+                    unsubscribe = onSnapshot(doc(db, docPath), (docSnap) => {
                         if (docSnap.exists()) {
                             const data = docSnap.data();
                             console.log("Received data update");
@@ -768,8 +771,18 @@
             }
 
             window.checkProgress = function (checkbox) {
+                // Fallback for legacy HTML from Firestore that calls checkProgress() without args
+                if (!checkbox && window.event && window.event.target) {
+                    checkbox = window.event.target;
+                }
+
                 if (checkbox && checkbox.checked) {
                     playDing();
+                    // Set timestamp for stats
+                    checkbox.setAttribute('data-timestamp', Date.now());
+                } else if (checkbox && !checkbox.checked) {
+                    // Remove timestamp if unchecked
+                    checkbox.removeAttribute('data-timestamp');
                 }
                 const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
                 if (checkboxes.length === 0) return;
