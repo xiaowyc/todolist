@@ -122,7 +122,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getFirestore, doc, collection, onSnapshot, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
         // === Firebase Config ===
         // TODO: 请填入与 todo/index.html 相同的配置 (Please use the same config as todo/index.html)
@@ -140,7 +140,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
 
         // === UI: Header & Auth ===
         const bodyTag = document.body;
@@ -148,11 +147,64 @@
         headerDiv.style.width = '100%';
         headerDiv.style.maxWidth = '600px';
         headerDiv.style.display = 'flex';
+        headerDiv.style.flexDirection = 'row';
         headerDiv.style.justifyContent = 'space-between';
-        headerDiv.style.alignItems = 'center';
         headerDiv.style.marginBottom = '15px';
 
-        // Add "New Subject" Button
+        // --- Auth Form Container ---
+        const authContainer = document.createElement('div');
+        authContainer.id = 'auth-container';
+        authContainer.style.display = 'flex';
+        authContainer.style.gap = '5px';
+        authContainer.style.alignItems = 'center';
+        authContainer.style.background = '#f1f3f4';
+        authContainer.style.padding = '5px 10px';
+        authContainer.style.borderRadius = '8px';
+
+        // Inputs
+        const emailInput = document.createElement('input');
+        emailInput.type = 'email';
+        emailInput.placeholder = '邮箱';
+        emailInput.style.padding = '4px';
+        emailInput.style.borderRadius = '4px';
+        emailInput.style.border = '1px solid #ccc';
+
+        const passInput = document.createElement('input');
+        passInput.type = 'password';
+        passInput.placeholder = '密码';
+        passInput.style.padding = '4px';
+        passInput.style.borderRadius = '4px';
+        passInput.style.border = '1px solid #ccc';
+
+        // Buttons
+        const loginBtn = document.createElement('button');
+        loginBtn.innerText = '登录';
+        loginBtn.style.padding = '4px 8px';
+        loginBtn.style.cursor = 'pointer';
+
+        const registerBtn = document.createElement('button');
+        registerBtn.innerText = '注册';
+        registerBtn.style.padding = '4px 8px';
+        registerBtn.style.cursor = 'pointer';
+
+        // Error Msg
+        const errorMsg = document.createElement('div');
+        errorMsg.style.color = 'red';
+        errorMsg.style.fontSize = '12px';
+        errorMsg.style.marginTop = '5px';
+        errorMsg.style.display = 'none';
+
+        // Logged In State UI
+        const userInfoSpan = document.createElement('span');
+        userInfoSpan.style.marginRight = '10px';
+        userInfoSpan.style.display = 'none';
+
+        const logoutBtn = document.createElement('button');
+        logoutBtn.innerText = '退出';
+        logoutBtn.style.display = 'none';
+        logoutBtn.style.cursor = 'pointer';
+
+        // Add "New Subject" Button (Green one)
         const newSubjectBtn = document.createElement('button');
         newSubjectBtn.innerText = '+ 新建科目';
         newSubjectBtn.style.padding = '8px 16px';
@@ -163,18 +215,34 @@
         newSubjectBtn.style.cursor = 'pointer';
         newSubjectBtn.style.fontSize = '14px';
         newSubjectBtn.style.display = 'none'; // Hidden until login
+        newSubjectBtn.style.alignSelf = 'flex-start'; // Left align this one independently if needed, or put in correct layout
+        newSubjectBtn.style.marginBottom = '10px';
 
-        const loginBtn = document.createElement('button');
-        loginBtn.innerText = 'Google 登录';
-        loginBtn.style.padding = '8px 16px';
-        loginBtn.style.background = '#4285F4';
-        loginBtn.style.color = 'white';
-        loginBtn.style.border = 'none';
-        loginBtn.style.borderRadius = '6px';
-        loginBtn.style.cursor = 'pointer';
+        // Assemble Header
+        // We want New Subject on Left (or separate), Auth on Right.
+        // Let's restructure headerDiv slightly to be a row.
+
+        authContainer.appendChild(emailInput);
+        authContainer.appendChild(passInput);
+        authContainer.appendChild(loginBtn);
+        authContainer.appendChild(registerBtn);
+
+        const userContainer = document.createElement('div');
+        userContainer.style.display = 'flex';
+        userContainer.style.alignItems = 'center';
+        userContainer.appendChild(userInfoSpan);
+        userContainer.appendChild(logoutBtn);
+
+        const rightSide = document.createElement('div');
+        rightSide.style.display = 'flex';
+        rightSide.style.flexDirection = 'column';
+        rightSide.style.alignItems = 'flex-end';
+        rightSide.appendChild(authContainer);
+        rightSide.appendChild(userContainer); // Will only show one of these
+        rightSide.appendChild(errorMsg);
 
         headerDiv.appendChild(newSubjectBtn);
-        headerDiv.appendChild(loginBtn);
+        headerDiv.appendChild(rightSide);
         bodyTag.insertBefore(headerDiv, bodyTag.firstChild);
 
         const grid = document.getElementById('card-grid');
@@ -182,15 +250,44 @@
         let unsubscribeCollection = null;
         let currentUser = null;
 
-        // Login Logic
+        // === Auth Logic ===
+
+        const showError = (msg) => {
+            errorMsg.innerText = msg;
+            errorMsg.style.display = 'block';
+            setTimeout(() => errorMsg.style.display = 'none', 5000);
+        };
+
         loginBtn.onclick = () => {
-            if (currentUser) {
-                signOut(auth).then(() => { console.log("Logged out"); });
-            } else {
-                signInWithPopup(auth, provider)
-                    .then((result) => console.log("Logged in:", result.user.uid))
-                    .catch((error) => alert("登录失败: " + error.message));
-            }
+            const email = emailInput.value;
+            const pass = passInput.value;
+            if (!email || !pass) return showError("请输入邮箱和密码");
+
+            signInWithEmailAndPassword(auth, email, pass)
+                .then((cred) => {
+                    console.log("Logged in:", cred.user.uid);
+                    emailInput.value = '';
+                    passInput.value = '';
+                })
+                .catch((error) => showError(error.message));
+        };
+
+        registerBtn.onclick = () => {
+            const email = emailInput.value;
+            const pass = passInput.value;
+            if (!email || !pass) return showError("请输入邮箱和密码");
+
+            createUserWithEmailAndPassword(auth, email, pass)
+                .then((cred) => {
+                    console.log("Registered:", cred.user.uid);
+                    emailInput.value = '';
+                    passInput.value = '';
+                })
+                .catch((error) => showError(error.message));
+        };
+
+        logoutBtn.onclick = () => {
+            signOut(auth).then(() => console.log("Logged out"));
         };
 
         // New Subject Logic
@@ -207,16 +304,23 @@
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             if (user) {
-                loginBtn.innerText = `已登录`;
-                loginBtn.style.background = '#333';
+                // Show User UI
+                authContainer.style.display = 'none';
+                userContainer.style.display = 'flex';
+                userInfoSpan.style.display = 'inline';
+                userInfoSpan.innerText = user.email;
+                logoutBtn.style.display = 'inline-block';
+
                 newSubjectBtn.style.display = 'block';
                 startCollectionListener();
             } else {
-                loginBtn.innerText = 'Google 登录';
-                loginBtn.style.background = '#4285F4';
+                // Show Login Form
+                authContainer.style.display = 'flex';
+                userContainer.style.display = 'none';
+
                 newSubjectBtn.style.display = 'none';
                 stopCollectionListener();
-                grid.innerHTML = '<div style="text-align:center;width:100%;color:#999;font-size:14px;grid-column:1/-1;">请登录以查看您的科目</div>';
+                grid.innerHTML = '<div style="text-align:center;width:100%;color:#999;font-size:14px;grid-column:1/-1;">请登录或注册以管理您的科目</div>';
             }
         });
 
