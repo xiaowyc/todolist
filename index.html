@@ -1,94 +1,337 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>学习进度总览</title>
     <style>
-        :root { --bg-color: transparent; --card-bg: rgba(255, 255, 255, 0.9); --text-main: #37352f; --text-sub: #777; --accent: #2383e2; --success: #2ea043; }
-        body { margin: 0; padding: 20px; font-family: -apple-system, sans-serif; background-color: var(--bg-color); color: var(--text-main); display: flex; flex-direction: column; align-items: center; }
-        h1 { font-size: 20px; margin-bottom: 20px; opacity: 0.9; }
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; width: 100%; max-width: 600px; }
-        .card { background: var(--card-bg); border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; transition: transform 0.2s; text-decoration: none; color: inherit; border: 1px solid rgba(0,0,0,0.05); }
-        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
-        .card-round { font-size: 28px; font-weight: 800; margin-bottom: 8px; color: var(--text-main); }
-        .card-round span { font-size: 12px; color: var(--text-sub); font-weight: normal; }
-        .mini-progress-track { width: 100%; height: 6px; background: rgba(0,0,0,0.05); border-radius: 3px; overflow: hidden; margin-top: auto; }
-        .mini-progress-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 3px; }
-        .completed .mini-progress-fill { background: var(--success); }
-        .status-text { font-size: 11px; color: var(--text-sub); margin-top: 6px; display: flex; justify-content: space-between; }
-        @media (prefers-color-scheme: dark) { :root { --card-bg: rgba(40,40,40, 0.9); --text-main: #fff; --text-sub: #aaa; } }
+        :root {
+            --bg-color: transparent;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --text-main: #37352f;
+            --text-sub: #777;
+            --accent: #2383e2;
+            --success: #2ea043;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .card-round {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        .card-round span {
+            font-size: 12px;
+            color: var(--text-sub);
+            font-weight: normal;
+        }
+
+        .mini-progress-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: auto;
+        }
+
+        .mini-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            border-radius: 3px;
+        }
+
+        .completed .mini-progress-fill {
+            background: var(--success);
+        }
+
+        .status-text {
+            font-size: 11px;
+            color: var(--text-sub);
+            margin-top: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --card-bg: rgba(40, 40, 40, 0.9);
+                --text-main: #fff;
+                --text-sub: #aaa;
+            }
+        }
     </style>
 </head>
+
 <body>
     <h1>📚 复习全景图</h1>
     <div class="grid-container" id="card-grid"></div>
 
-    <script>
-        // === 配置区域 ===
-        // 这里定义你想在仪表盘上看到哪些科目
-        const defaultSubjects = [
-            { id: 'western', name: '西方美术史' },
-            { id: 'chinese', name: '中国美术史' },
-            { id: 'english', name: '考研英语' },
-            { id: 'politics', name: '政治' },
-            { id: 'design', name: '设计理论' }
-        ];
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getFirestore, doc, collection, onSnapshot, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
-        // === 逻辑区域 ===
-        const urlParams = new URLSearchParams(window.location.search);
-        const idsParam = urlParams.get('ids');
-        const subjects = idsParam ? idsParam.split(',').map(id => ({ id: id.trim(), name: id.toUpperCase() })) : defaultSubjects;
+        // === Firebase Config ===
+        // TODO: 请填入与 todo/index.html 相同的配置 (Please use the same config as todo/index.html)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAyzdr7PnbRw5oyoXQN05JSAEEZFbxBI4Q",
+            authDomain: "recite-flow-cloud.firebaseapp.com",
+            projectId: "recite-flow-cloud",
+            storageBucket: "recite-flow-cloud.firebasestorage.app",
+            messagingSenderId: "782100544476",
+            appId: "1:782100544476:web:08d5016464513f2d872d19",
+            measurementId: "G-7MHQLT80LD"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        // === UI: Header & Auth ===
+        const bodyTag = document.body;
+        const headerDiv = document.createElement('div');
+        headerDiv.style.width = '100%';
+        headerDiv.style.maxWidth = '600px';
+        headerDiv.style.display = 'flex';
+        headerDiv.style.justifyContent = 'space-between';
+        headerDiv.style.alignItems = 'center';
+        headerDiv.style.marginBottom = '15px';
+
+        // Add "New Subject" Button
+        const newSubjectBtn = document.createElement('button');
+        newSubjectBtn.innerText = '+ 新建科目';
+        newSubjectBtn.style.padding = '8px 16px';
+        newSubjectBtn.style.background = '#2ea043';
+        newSubjectBtn.style.color = 'white';
+        newSubjectBtn.style.border = 'none';
+        newSubjectBtn.style.borderRadius = '6px';
+        newSubjectBtn.style.cursor = 'pointer';
+        newSubjectBtn.style.fontSize = '14px';
+        newSubjectBtn.style.display = 'none'; // Hidden until login
+
+        const loginBtn = document.createElement('button');
+        loginBtn.innerText = 'Google 登录';
+        loginBtn.style.padding = '8px 16px';
+        loginBtn.style.background = '#4285F4';
+        loginBtn.style.color = 'white';
+        loginBtn.style.border = 'none';
+        loginBtn.style.borderRadius = '6px';
+        loginBtn.style.cursor = 'pointer';
+
+        headerDiv.appendChild(newSubjectBtn);
+        headerDiv.appendChild(loginBtn);
+        bodyTag.insertBefore(headerDiv, bodyTag.firstChild);
 
         const grid = document.getElementById('card-grid');
 
-        subjects.forEach(subj => {
-            const storageKey = 'recite_data_' + subj.id;
-            const savedData = localStorage.getItem(storageKey);
-            
-            let round = 0, percent = 0, total = 0, checked = 0;
+        let unsubscribeCollection = null;
+        let currentUser = null;
 
-            if (savedData) {
-                try {
-                    const data = JSON.parse(savedData);
-                    round = data.round || 0;
-                    const tempDiv = document.createElement('div');
-                    if (data.listHtml) {
-                        tempDiv.innerHTML = data.listHtml;
-                        const checkboxes = tempDiv.querySelectorAll('input[type="checkbox"]');
-                        total = checkboxes.length;
-                        checked = Array.from(checkboxes).filter(cb => cb.hasAttribute('checked') || cb.checked).length;
-                        if (total > 0) percent = Math.round((checked / total) * 100);
-                    }
-                } catch (e) { console.warn('Data error', e); }
+        // Login Logic
+        loginBtn.onclick = () => {
+            if (currentUser) {
+                signOut(auth).then(() => { console.log("Logged out"); });
+            } else {
+                signInWithPopup(auth, provider)
+                    .then((result) => console.log("Logged in:", result.user.uid))
+                    .catch((error) => alert("登录失败: " + error.message));
             }
+        };
 
-            // 【重点】这里设置点击卡片跳转的路径
-            // 因为背诵组件在 todo 文件夹下，所以路径是 ./todo/index.html
-            const cardLink = `./todo/index.html?id=${subj.id}&title=${encodeURIComponent(subj.name)}`;
-            
-            const isCompleted = (percent === 100 && total > 0);
-            const progressClass = isCompleted ? 'mini-progress-fill completed' : 'mini-progress-fill';
+        // New Subject Logic
+        newSubjectBtn.onclick = () => {
+            const name = prompt("请输入新科目名称：");
+            if (name && name.trim()) {
+                const id = 'list_' + Date.now();
+                // Redirect to create it
+                window.open(`./todo/index.html?id=${id}&title=${encodeURIComponent(name)}`, '_blank');
+            }
+        };
 
-            const card = document.createElement('a');
-            card.className = 'card';
-            card.href = cardLink;
-            card.target = "_blank"; // 点击在新窗口打开背诵单
-
-            card.innerHTML = `
-                <div class="card-title">${subj.name}</div>
-                <div class="card-round">${round} <span>轮</span></div>
-                <div class="mini-progress-track">
-                    <div class="${progressClass}" style="width: ${percent}%"></div>
-                </div>
-                <div class="status-text">
-                    <span>进度 ${percent}%</span>
-                    <span>${checked}/${total}</span>
-                </div>
-            `;
-            grid.appendChild(card);
+        // Auth Listener
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                loginBtn.innerText = `已登录`;
+                loginBtn.style.background = '#333';
+                newSubjectBtn.style.display = 'block';
+                startCollectionListener();
+            } else {
+                loginBtn.innerText = 'Google 登录';
+                loginBtn.style.background = '#4285F4';
+                newSubjectBtn.style.display = 'none';
+                stopCollectionListener();
+                grid.innerHTML = '<div style="text-align:center;width:100%;color:#999;font-size:14px;grid-column:1/-1;">请登录以查看您的科目</div>';
+            }
         });
+
+        function stopCollectionListener() {
+            if (unsubscribeCollection) {
+                unsubscribeCollection();
+                unsubscribeCollection = null;
+            }
+            grid.innerHTML = '';
+        }
+
+        function startCollectionListener() {
+            stopCollectionListener();
+
+            // Listen to the specific path where lists are stored
+            // Path: /Users/wangyuchen/.gemini/antigravity/scratch/notion-clock/lists/
+            const listsCollectionPath = `/Users/wangyuchen/.gemini/antigravity/scratch/notion-clock/lists`;
+            const listsRef = collection(db, listsCollectionPath);
+
+            grid.innerHTML = '<div style="text-align:center;width:100%;color:#999;font-size:14px;grid-column:1/-1;">正在加载...</div>';
+
+            unsubscribeCollection = onSnapshot(listsRef, (snapshot) => {
+                grid.innerHTML = ''; // Clear current grid
+
+                if (snapshot.empty) {
+                    grid.innerHTML = '<div style="text-align:center;width:100%;color:#999;font-size:14px;grid-column:1/-1;">暂无科目，点击左上角新建</div>';
+                    return;
+                }
+
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    const docId = docSnap.id;
+                    const title = data.title || docId; // Fallback to ID if no title
+                    const round = data.round || 0;
+
+                    // Calc Progress
+                    let percent = 0, total = 0, checked = 0;
+                    if (data.listHtml) {
+                        try {
+                            const parser = new DOMParser();
+                            const docDOM = parser.parseFromString(data.listHtml, 'text/html');
+                            const checkboxes = docDOM.querySelectorAll('input[type="checkbox"]');
+                            total = checkboxes.length;
+                            checked = Array.from(checkboxes).filter(cb => cb.hasAttribute('checked') || cb.checked).length;
+                            if (total > 0) percent = Math.round((checked / total) * 100);
+                        } catch (e) { }
+                    }
+
+                    const isCompleted = (percent === 100 && total > 0);
+                    const progressClass = isCompleted ? 'mini-progress-fill completed' : 'mini-progress-fill';
+
+                    const cardLink = `./todo/index.html?id=${docId}&title=${encodeURIComponent(title)}`;
+
+                    // Create UI
+                    const card = document.createElement('div'); // Wrapper
+                    card.style.position = 'relative'; // For delete btn positioning
+
+                    // Content Link
+                    const link = document.createElement('a');
+                    link.className = 'card';
+                    link.href = cardLink;
+                    link.target = "_blank";
+                    link.innerHTML = `
+                        <div class="card-title">${title}</div>
+                        <div class="card-round">${round} <span>轮</span></div>
+                        <div class="mini-progress-track">
+                            <div class="${progressClass}" style="width: ${percent}%"></div>
+                        </div>
+                        <div class="status-text">
+                            <span>进度 ${percent}%</span>
+                            <span>${checked}/${total}</span>
+                        </div>
+                    `;
+
+                    // Delete Button
+                    const delBtn = document.createElement('div');
+                    delBtn.innerHTML = '×';
+                    delBtn.style.position = 'absolute';
+                    delBtn.style.top = '10px';
+                    delBtn.style.right = '10px';
+                    delBtn.style.width = '20px';
+                    delBtn.style.height = '20px';
+                    delBtn.style.background = 'rgba(0,0,0,0.1)';
+                    delBtn.style.borderRadius = '50%';
+                    delBtn.style.textAlign = 'center';
+                    delBtn.style.lineHeight = '18px';
+                    delBtn.style.fontSize = '14px';
+                    delBtn.style.color = '#fff';
+                    delBtn.style.cursor = 'pointer';
+                    delBtn.style.opacity = '0'; // Hover only
+                    delBtn.style.transition = 'opacity 0.2s';
+                    delBtn.title = '删除此科目';
+
+                    delBtn.onclick = (e) => {
+                        e.preventDefault();
+                        if (confirm(`确定要删除“${title}”吗？此操作不可恢复。`)) {
+                            deleteDoc(doc(db, listsCollectionPath, docId))
+                                .catch(err => alert("删除失败: " + err.message));
+                        }
+                    };
+
+                    card.onmouseenter = () => delBtn.style.opacity = '1';
+                    card.onmouseleave = () => delBtn.style.opacity = '0';
+
+                    card.appendChild(link);
+                    card.appendChild(delBtn);
+                    grid.appendChild(card);
+                });
+            }, (error) => {
+                console.error("Collection listener error:", error);
+                grid.innerHTML = `<div style="text-align:center;width:100%;color:red;font-size:14px;grid-column:1/-1;">加载失败: ${error.message}</div>`;
+            });
+        }
+
     </script>
 </body>
+
 </html>
