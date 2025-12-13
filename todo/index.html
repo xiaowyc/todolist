@@ -401,6 +401,8 @@
             transform: translateX(-3px);
         }
     </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 
 <body>
@@ -580,6 +582,37 @@
             const progressText = document.getElementById('progress-text');
             const progressPercent = document.getElementById('progress-percent');
 
+            // Sound Effect
+            const dingSound = new Audio('../ding.MP3');
+            function playDing() {
+                dingSound.currentTime = 0;
+                dingSound.play().catch(e => console.log("Audio play failed", e));
+                dingSound.play().catch(e => console.log("Audio play failed", e));
+            }
+
+            function triggerFireworks() {
+                var duration = 3000;
+                var animationEnd = Date.now() + duration;
+                var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+                var interval = setInterval(function () {
+                    var timeLeft = animationEnd - Date.now();
+
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+
+                    var particleCount = 50 * (timeLeft / duration);
+                    // since particles fall down, start a bit higher than random
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+                }, 250);
+            }
+
+            function randomInRange(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
             // === 核心逻辑 ===
             async function saveData() {
                 if (!currentUser) {
@@ -724,7 +757,7 @@
                     item.className = 'todo-item';
                     const id = 'item-' + index + '-' + Date.now();
                     item.innerHTML = `
-                    <input type="checkbox" id="${id}" onchange="checkProgress()">
+                    <input type="checkbox" id="${id}" onchange="checkProgress(this)">
                     <label for="${id}">${line}</label>
                 `;
                     listContainer.appendChild(item);
@@ -734,7 +767,10 @@
                 saveData();
             }
 
-            window.checkProgress = function () {
+            window.checkProgress = function (checkbox) {
+                if (checkbox && checkbox.checked) {
+                    playDing();
+                }
                 const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
                 if (checkboxes.length === 0) return;
 
@@ -744,6 +780,7 @@
                 const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
 
                 if (checkedCount === checkboxes.length) {
+                    triggerFireworks();
                     setTimeout(() => {
                         roundCount++;
                         roundDisplay.innerText = roundCount;
