@@ -379,7 +379,8 @@
         headerDiv.style.marginBottom = '15px';
 
         // --- Auth Form Container ---
-        const authContainer = document.createElement('div');
+        const authContainer = document.createElement('form');
+        authContainer.onsubmit = (e) => e.preventDefault();
         authContainer.id = 'auth-container';
         authContainer.style.display = 'flex';
         authContainer.style.gap = '8px';
@@ -445,10 +446,12 @@
 
         // Buttons
         const loginBtn = document.createElement('button');
+        loginBtn.type = 'submit';
         loginBtn.innerText = '登录';
         btnStyle(loginBtn, true);
 
         const registerBtn = document.createElement('button');
+        registerBtn.type = 'button';
         registerBtn.innerText = '注册';
         btnStyle(registerBtn, false);
 
