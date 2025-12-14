@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>背诵检查单 (腾讯云版)</title>
+    <style>
+        :root {
+            --bg-color: transparent;
+            --text-color: #37352f;
+            --checked-color: #9b9a97;
+            --accent-color: #2383e2;
+            --success-color: #2ea043;
+            --danger-color: #eb5757;
+            --track-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 仪表盘 */
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            box-sizing: border-box;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .widget-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+            opacity: 0.8;
+        }
+
+        .round-count {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--text-color);
+            line-height: 1;
+            margin-bottom: 10px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .progress-section {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background-color: var(--track-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background-color: var(--accent-color);
+            border-radius: 4px;
+            transition: width 0.3s, background-color 0.3s;
+        }
+
+        .progress-fill.completed {
+            background-color: var(--success-color);
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            border: none;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0.9;
+        }
+
+        button:hover {
+            opacity: 1;
+            transform: translateY(-1px);
+        }
+
+        .btn-reset {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-clear {
+            background-color: #ffeaea;
+            color: var(--danger-color);
+            border: 1px solid transparent;
+        }
+
+        .btn-clear:hover::after {
+            content: '(双击)';
+            font-size: 10px;
+            margin-left: 3px;
+            opacity: 0.7;
+        }
+
+        .btn-generate {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 8px 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .input-section {
+            width: 100%;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            resize: vertical;
+            background: rgba(255, 255, 255, 0.8);
+            font-family: inherit;
+            box-sizing: border-box;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #todo-list {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 10px;
+            padding-bottom: 40px;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: flex-start;
+            width: 100%;
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .todo-item:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .todo-item input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #888;
+            border-radius: 5px;
+            margin-right: 12px;
+            margin-top: 3px;
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .todo-item input[type="checkbox"]:checked {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .todo-item input[type="checkbox"]:checked::after {
+            content: '✓';
+            color: white;
+            font-size: 13px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+        }
+
+        .todo-item label {
+            font-size: 16px;
+            color: var(--text-color);
+            cursor: pointer;
+            line-height: 1.5;
+            transition: color 0.2s;
+            text-align: left;
+            word-break: break-all;
+            flex-grow: 1;
+        }
+
+        .todo-item input[type="checkbox"]:checked+label {
+            text-decoration: line-through;
+            color: var(--checked-color);
+        }
+
+        #show-input-btn {
+            margin-top: 10px;
+            background: transparent;
+            color: #999;
+            text-decoration: underline;
+            font-size: 12px;
+        }
+
+        .footer-info {
+            margin-top: 20px;
+            font-size: 10px;
+            color: #ccc;
+            opacity: 0.6;
+        }
+
+        .emergency-reset {
+            position: fixed;
+            bottom: 5px;
+            right: 5px;
+            width: 15px;
+            height: 15px;
+            background: #eee;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 9999;
+            opacity: 0.2;
+        }
+
+        .emergency-reset:hover {
+            background: red;
+            opacity: 1;
+        }
+
+        .instance-id-tag {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 10px;
+            color: #aaa;
+            font-family: monospace;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --text-color: #ffffff;
+                --checked-color: #666;
+                --track-color: rgba(255, 255, 255, 0.1);
+            }
+
+            .dashboard,
+            textarea {
+                background: rgba(30, 30, 30, 0.6);
+                border-color: #444;
+            }
+
+            .todo-item {
+                background: rgba(255, 255, 255, 0.03);
+            }
+
+            .todo-item:hover {
+                background: rgba(255, 255, 255, 0.08);
+            }
+
+            .todo-item input[type="checkbox"] {
+                border-color: #666;
+            }
+
+            .widget-title {
+                color: #aaa;
+            }
+
+            .btn-reset {
+                background-color: #444;
+                color: #fff;
+            }
+
+            .btn-clear {
+                background-color: #422;
+                color: #ff8888;
+            }
+        }
+
+        /* Loading Mask */
+        #loading-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 1);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.3s ease;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            #loading-mask {
+                background: #1e1e1e;
+            }
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Back Button */
+        .btn-back {
+            align-self: flex-start;
+            margin-bottom: 10px;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 0;
+            cursor: pointer;
+            text-decoration: none;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            border: none;
+        }
+
+        .btn-back:hover {
+            opacity: 1;
+            transform: translateX(-3px);
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://imgcache.qq.com/qcloud/tcbjs/1.10.12/tcb.js"></script>
+</head>
+
+<body>
+    <div id="loading-mask" style="display: flex;">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="main-container">
+        <div class="dashboard">
+            <a href="../index.html" class="btn-back">← 返回仪表盘</a>
+            <div class="instance-id-tag" id="debug-id"></div>
+
+            <div class="widget-title" id="page-title">背诵轮次</div>
+            <div class="round-count" id="round-display">0</div>
+
+            <div class="progress-section" id="progress-area" style="display:none;">
+                <div class="progress-info">
+                    <span id="progress-text">进度</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progress-bar"></div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn-reset" id="btn-reset">归零</button>
+                <button class="btn-clear" id="btn-clear" style="display:none;">删除 (双击)</button>
+            </div>
+        </div>
+
+        <!-- Auth Status/Warning -->
+        <div id="auth-warning"
+            style="display:none; color: #eb5757; font-size: 13px; margin-bottom: 15px; text-align:center;">
+            您似乎未登录，数据无法保存。<a href="../index.html" style="color: inherit; text-decoration: underline;">去登录</a>
+        </div>
+
+        <div class="input-section" id="input-area">
+            <textarea id="source-text" placeholder="在此处粘贴你的清单...
+(支持换行、逗号分隔)"></textarea>
+            <button class="btn-generate" onclick="generateList()">开始生成</button>
+        </div>
+
+        <div id="todo-list"></div>
+
+        <button id="show-input-btn" class="hidden" onclick="showInput()">+ 添加/修改清单</button>
+
+        <div class="footer-info">v5.3 腾讯云版</div>
+    </div>
+
+    <div class="emergency-reset" onclick="hardReset()" title="点击强制重置数据"></div>
+
+    <script>
+        // === TCB Config ===
+        const app = tcb.init({
+            env: 'cloud1-2gjjob5w5adc53bc'
+        });
+        const auth = app.auth();
+        const db = app.database();
+
+        let currentUser = null;
+        let unsubscribe = null;
+
+        const loadingMask = document.getElementById('loading-mask');
+        function hideLoadingMask() {
+            if (loadingMask) {
+                loadingMask.style.opacity = '0';
+                setTimeout(() => loadingMask.style.display = 'none', 300);
+            }
+        }
+
+        // Failsafe for loading
+        setTimeout(hideLoadingMask, 3000);
+
+        // Check Auth State
+        const loginState = auth.getLoginState();
+        if (loginState) {
+            currentUser = loginState.user;
+            document.getElementById('auth-warning').style.display = 'none';
+        } else {
+            console.warn("User not logged in");
+            document.getElementById('auth-warning').style.display = 'block';
+        }
+
+        // Listen to state change just in case (e.g. tab sync)
+        auth.onLoginStateChanged((state) => {
+            if (state) {
+                currentUser = state.user;
+                document.getElementById('auth-warning').style.display = 'none';
+                loadData();
+            } else {
+                currentUser = null;
+                document.getElementById('auth-warning').style.display = 'block';
+            }
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const instanceId = urlParams.get('id') || 'default';
+        const customTitle = urlParams.get('title');
+
+        if (customTitle) document.getElementById('page-title').innerText = decodeURIComponent(customTitle);
+        if (instanceId !== 'default') document.getElementById('debug-id').innerText = instanceId;
+
+        let roundCount = 0;
+        const roundDisplay = document.getElementById('round-display');
+        const listContainer = document.getElementById('todo-list');
+        const inputArea = document.getElementById('input-area');
+        const clearBtn = document.getElementById('btn-clear');
+        const resetBtn = document.getElementById('btn-reset');
+        const showInputBtn = document.getElementById('show-input-btn');
+        const sourceTextArea = document.getElementById('source-text');
+
+        const progressArea = document.getElementById('progress-area');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressPercent = document.getElementById('progress-percent');
+
+        // Sound Effect
+        const dingSound = new Audio('../ding.MP3');
+        function playDing() {
+            dingSound.currentTime = 0;
+            dingSound.play().catch(e => console.log("Audio play failed", e));
+        }
+
+        function triggerFireworks() {
+            var duration = 3000;
+            var animationEnd = Date.now() + duration;
+            var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+            var interval = setInterval(function () {
+                var timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) {
+                    return clearInterval(interval);
+                }
+
+                var particleCount = 50 * (timeLeft / duration);
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        }
+
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        // === Logic ===
+        async function saveData() {
+            if (!currentUser) return;
+
+            const docPath = instanceId; // Doc ID in 'lists' collection
+
+            try {
+                // 1. Persist checkboxes
+                const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+                checkboxes.forEach(cb => {
+                    if (cb.checked) {
+                        cb.setAttribute('checked', 'checked');
+                    } else {
+                        cb.removeAttribute('checked');
+                    }
+                });
+
+                const data = {
+                    title: document.getElementById('page-title').innerText,
+                    round: roundCount,
+                    listHtml: listContainer.innerHTML,
+                    isInputHidden: inputArea.classList.contains('hidden'),
+                    rawText: sourceTextArea.value,
+                    updatedAt: new Date()
+                };
+
+                // TCB Save
+                await db.collection('users').doc(currentUser.uid).collection('lists').doc(docPath).set(data);
+                console.log("Saved to TCB");
+
+            } catch (e) {
+                console.error("Save error:", e);
+                alert("保存失败: " + e.message);
+            }
+        }
+
+        function loadData() {
+            if (!currentUser) {
+                hideLoadingMask();
+                return;
+            }
+            if (unsubscribe) unsubscribe.close();
+
+            const listsRef = db.collection('users').doc(currentUser.uid).collection('lists');
+
+            // TCB Watch Document
+            unsubscribe = listsRef.where({
+                _id: instanceId // TCB query by _id
+            }).watch({
+                onChange: (snapshot) => {
+                    if (snapshot.docs.length > 0) {
+                        const data = snapshot.docs[0];
+
+                        roundCount = data.round || 0;
+                        roundDisplay.innerText = roundCount;
+
+                        if (data.listHtml && listContainer.innerHTML !== data.listHtml) {
+                            listContainer.innerHTML = data.listHtml;
+                            // Re-attach change handlers for inputs that came from innerHTML
+                            const checkboxes = listContainer.querySelectorAll('input[type="checkbox"]');
+                            checkboxes.forEach(cb => {
+                                cb.onchange = function () { checkProgress(this); };
+                            });
+                        }
+
+                        if (data.rawText) sourceTextArea.value = data.rawText;
+
+                        // UI Logic
+                        const hasValidContent = data.listHtml && data.listHtml.includes('todo-item');
+                        if (data.isInputHidden && hasValidContent) {
+                            inputArea.classList.add('hidden');
+                            showInputBtn.classList.remove('hidden');
+                            clearBtn.style.display = 'block';
+                        } else {
+                            showInput();
+                        }
+                        updateStats(false);
+
+                    } else {
+                        console.log("No document found");
+                        showInput();
+                    }
+                    hideLoadingMask();
+                },
+                onError: (err) => {
+                    console.error("Watch failed", err);
+                    hideLoadingMask();
+                }
+            });
+        }
+
+        // Init Load
+        loadData();
+
+        function updateStats(shouldSave = true) {
+            const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+            const total = checkboxes.length;
+
+            if (total === 0) {
+                progressArea.style.display = 'none';
+                return;
+            }
+
+            progressArea.style.display = 'block';
+
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const percent = Math.round((checkedCount / total) * 100);
+
+            progressText.innerText = `${checkedCount} / ${total}`;
+            progressPercent.innerText = `${percent}%`;
+            progressBar.style.width = `${percent}%`;
+
+            if (percent === 100) {
+                progressBar.classList.add('completed');
+            } else {
+                progressBar.classList.remove('completed');
+            }
+        }
+
+        // Global functions for events
+        window.showInput = function () {
+            inputArea.classList.remove('hidden');
+            showInputBtn.classList.add('hidden');
+            sourceTextArea.focus();
+        };
+
+        window.generateList = function () {
+            const text = sourceTextArea.value;
+            if (!text.trim()) return;
+
+            inputArea.classList.add('hidden');
+            showInputBtn.classList.remove('hidden');
+            clearBtn.style.display = 'block';
+
+            listContainer.innerHTML = '';
+            const lines = text.split(/[\n,，]/).map(t => t.trim()).filter(t => t.length > 0);
+
+            lines.forEach((line, index) => {
+                const item = document.createElement('div');
+                item.className = 'todo-item';
+                const id = 'item-' + index + '-' + Date.now();
+
+                // Create elements meticulously to ensure event binding
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = id;
+                cb.onchange = function () { checkProgress(this); };
+
+                const label = document.createElement('label');
+                label.htmlFor = id;
+                label.innerText = line;
+
+                item.appendChild(cb);
+                item.appendChild(label);
+                listContainer.appendChild(item);
+            });
+
+            updateStats(false);
+            saveData();
+        }
+
+        window.checkProgress = function (checkbox) {
+            if (!checkbox) return;
+
+            if (checkbox.checked) {
+                playDing();
+                checkbox.setAttribute('data-timestamp', Date.now());
+            } else {
+                checkbox.removeAttribute('data-timestamp');
+            }
+
+            const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+
+            updateStats(false);
+            saveData();
+
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            if (checkedCount === checkboxes.length && checkboxes.length > 0) {
+                triggerFireworks();
+                setTimeout(() => {
+                    roundCount++;
+                    roundDisplay.innerText = roundCount;
+
+                    // Auto reset for next round? Or wait for user?
+                    // Original logic didn't auto reset checkboxes, just count.
+                    // But we should save the new round count.
+                    saveData();
+                }, 1000);
+            }
+        }
+
+        // Reset
+        resetBtn.onclick = () => {
+            if (confirm("确定要将进度归零吗？")) {
+                roundCount = 0;
+                roundDisplay.innerText = 0;
+                const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                    cb.removeAttribute('checked');
+                    cb.removeAttribute('data-timestamp');
+                });
+                updateStats();
+                saveData();
+            }
+        };
+
+        // Clear
+        clearBtn.ondblclick = () => {
+            if (confirm("确定要删除所有清单内容吗？")) {
+                listContainer.innerHTML = '';
+                sourceTextArea.value = '';
+                showInput();
+                updateStats();
+                saveData();
+            }
+        };
+
+        window.hardReset = function () {
+            if (confirm("强制重置？这将清除本地缓存。")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+    </script>
+</body>
+
+</html>
