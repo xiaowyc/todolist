@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>背诵检查单 (防消失修复版)</title>
+    <link rel="icon" href="data:,">
     <style>
         :root {
             --bg-color: transparent;
@@ -446,7 +447,7 @@
 
             <button id="show-input-btn" class="hidden" onclick="showInput()">+ 添加/修改清单</button>
 
-            <div class="footer-info">v5.2 修复版</div>
+            <div class="footer-info">v5.3 累积统计修复版</div>
         </div>
 
         <div class="emergency-reset" onclick="hardReset()" title="点击强制重置数据"></div>
@@ -802,11 +803,9 @@
                     // Remove timestamp if unchecked
                     checkbox.removeAttribute('data-timestamp');
 
-                    // Decrement persistent daily stat (prevent negative)
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    if (dailyStats[todayStr] && dailyStats[todayStr] > 0) {
-                        dailyStats[todayStr]--;
-                    }
+                    // FIX: Do NOT decrement daily stats on uncheck.
+                    // This ensures that resetting the list (unchecking all) does not erase the work record.
+                    // Each "Check" is a permanent unit of work for the day.
                 }
                 const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
                 if (checkboxes.length === 0) return;

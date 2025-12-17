@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>学习进度总览</title>
+    <link rel="icon" href="data:,"> <!-- Prevent 404 -->
     <style>
         :root {
             --bg-color: transparent;
@@ -302,6 +303,144 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* Countdown Styles */
+        .countdown-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: 15px;
+            flex: 1;
+            flex-wrap: wrap;
+        }
+
+        .countdown-item {
+            background: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            letter-spacing: 0.5px;
+            /* Unify spacing */
+            color: #444;
+        }
+
+        .countdown-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .countdown-item.urgent {
+            border-color: #eb5757;
+            background: #fff5f5;
+            color: #c0392b;
+        }
+
+        .countdown-time {
+            font-weight: 600;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-variant-numeric: tabular-nums;
+            /* Align numbers nicely */
+            color: inherit;
+        }
+
+        .countdown-add-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px dashed #ccc;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #999;
+            transition: all 0.2s;
+            font-size: 16px;
+        }
+
+        .countdown-add-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(35, 131, 226, 0.05);
+        }
+
+        /* Responsive: Hide add button on narrow screens to prevent layout misalignment */
+        @media (max-width: 768px) {
+            .countdown-add-btn {
+                display: none !important;
+            }
+        }
+
+        /* Countdown Modal */
+        .cd-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2001;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cd-modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 300px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .cd-input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        .cd-btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .cd-btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .cd-btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .cd-btn-danger {
+            background: #eb5757;
+            color: white;
+        }
+
+        .cd-btn-cancel {
+            background: #f0f0f0;
+            color: #666;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -311,10 +450,37 @@
         <div class="spinner"></div>
     </div>
 
-    <div style="width: 100%; max-width: 1000px; margin-bottom: 20px; display: flex; align-items: center;">
-        <h1 style="margin: 0;">📚 复习全景图</h1>
+    <div
+        style="width: 100%; max-width: 1000px; margin-bottom: 20px; display: flex; align-items: center; flex-wrap: wrap;">
+        <h1 style="margin: 0; white-space: nowrap;">📚 复习全景图</h1>
         <span id="todo-badge"
-            style="background: #eb5757; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 10px; opacity: 0; transition: opacity 0.3s;">0</span>
+            style="background: #eb5757; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 10px; opacity: 0; transition: opacity 0.3s; white-space: nowrap;">0</span>
+
+        <!-- Countdown Module -->
+        <div class="countdown-container" id="countdown-area">
+            <!-- Countdowns will be injected here -->
+            <button class="countdown-add-btn" onclick="openCountdownModal()" title="添加倒计时">+</button>
+        </div>
+    </div>
+
+    <!-- Countdown Modal -->
+    <div id="cd-modal" class="cd-modal">
+        <div class="cd-modal-content">
+            <h3 style="margin-top: 0; margin-bottom: 15px;">倒计时设置</h3>
+            <input type="hidden" id="cd-id">
+            <div style="margin-bottom: 5px; font-size: 12px; color: #666;">事件名称</div>
+            <input type="text" id="cd-title" class="cd-input" placeholder="例如：期末考试">
+            <div style="margin-bottom: 5px; font-size: 12px; color: #666;">目标时间</div>
+            <input type="datetime-local" id="cd-date" class="cd-input">
+
+            <div class="cd-btn-group">
+                <button class="cd-btn cd-btn-danger" id="cd-delete-btn" style="display: none;"
+                    onclick="deleteCountdown()">删除</button>
+                <div style="flex: 1;"></div>
+                <button class="cd-btn cd-btn-cancel" onclick="closeCountdownModal()">取消</button>
+                <button class="cd-btn cd-btn-primary" onclick="saveCountdown()">保存</button>
+            </div>
+        </div>
     </div>
 
     <div class="dashboard-layout">
@@ -396,7 +562,7 @@
         headerDiv.style.marginBottom = '15px';
 
         // --- Auth Form Container ---
-        const authContainer = document.createElement('div');
+        const authContainer = document.createElement('form'); // Changed to form
         authContainer.id = 'auth-container';
         authContainer.style.display = 'flex';
         authContainer.style.gap = '8px';
@@ -405,6 +571,9 @@
         authContainer.style.padding = '6px 12px';
         authContainer.style.borderRadius = '30px';
         authContainer.style.boxShadow = '0 2px 6px rgba(0,0,0,0.05)';
+
+        // Prevent default submit
+        authContainer.onsubmit = (e) => e.preventDefault();
 
         // Common Input Style
         const inputStyle = (input) => {
@@ -595,7 +764,8 @@
             const name = modalInput.value;
             if (name && name.trim()) {
                 const id = 'list_' + Date.now();
-                window.open(`./todo/index.html?id=${id}&title=${encodeURIComponent(name)}`, '_blank');
+                // window.open(`./todo/index.html?id=${id}&title=${encodeURIComponent(name)}`, '_blank');
+                window.location.href = `./todo/index.html?id=${id}&title=${encodeURIComponent(name)}`;
                 modal.style.display = 'none';
             } else {
                 alert("请输入科目名称");
@@ -705,6 +875,145 @@
             if (e.key === 'Enter') addTodo();
         };
 
+        // === Countdown Logic ===
+        let countdownUnsubscribe = null;
+        let countdownsData = [];
+        let timerInterval = null;
+
+        const countdownArea = document.getElementById('countdown-area');
+        const cdModal = document.getElementById('cd-modal');
+        const cdTitleInput = document.getElementById('cd-title');
+        const cdDateInput = document.getElementById('cd-date');
+        const cdIdInput = document.getElementById('cd-id');
+        const cdDeleteBtn = document.getElementById('cd-delete-btn');
+
+        // Expose to window for HTML click handlers
+        window.openCountdownModal = (id = null, title = '', date = '') => {
+            cdModal.style.display = 'flex';
+            cdIdInput.value = id || '';
+            cdTitleInput.value = title || '';
+            cdDateInput.value = date || '';
+
+            if (id) {
+                cdDeleteBtn.style.display = 'block';
+            } else {
+                cdDeleteBtn.style.display = 'none';
+            }
+            cdTitleInput.focus();
+        };
+
+        window.closeCountdownModal = () => {
+            cdModal.style.display = 'none';
+        }
+
+        window.saveCountdown = async () => {
+            const title = cdTitleInput.value.trim();
+            const dateStr = cdDateInput.value;
+            const id = cdIdInput.value;
+
+            if (!title || !dateStr) {
+                alert("请填写完整的名称和时间");
+                return;
+            }
+
+            try {
+                const colRef = collection(db, `users/${currentUser.uid}/countdowns`);
+                if (id) {
+                    await updateDoc(doc(colRef, id), { title, targetDate: dateStr });
+                } else {
+                    await addDoc(colRef, { title, targetDate: dateStr, createdAt: Date.now() });
+                }
+                closeCountdownModal();
+            } catch (e) {
+                console.error("Save countdown error:", e);
+                alert("保存失败");
+            }
+        };
+
+        window.deleteCountdown = async () => {
+            const id = cdIdInput.value;
+            if (!id) return;
+            if (confirm("确定删除此倒计时？")) {
+                try {
+                    await deleteDoc(doc(db, `users/${currentUser.uid}/countdowns`, id));
+                    closeCountdownModal();
+                } catch (e) {
+                    console.error("Delete error:", e);
+                }
+            }
+        };
+
+        const renderCountdowns = () => {
+            // Keep the add button
+            countdownArea.innerHTML = '<button class="countdown-add-btn" onclick="openCountdownModal()" title="添加倒计时">+</button>';
+
+            const now = new Date();
+
+            countdownsData.forEach(item => {
+                const target = new Date(item.targetDate);
+                const diff = target - now;
+
+                let timeStr = "";
+                let isUrgent = false;
+
+                if (diff <= 0) {
+                    timeStr = "已到期";
+                    isUrgent = true;
+                } else {
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+                    if (days > 0) {
+                        timeStr = `${days}天 ${hours}时`;
+                    } else {
+                        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                        timeStr = `${hours}时 ${minutes}分`;
+                        isUrgent = true;
+                    }
+                }
+
+                const div = document.createElement('div');
+                div.className = `countdown-item ${isUrgent ? 'urgent' : ''}`;
+                div.innerHTML = `
+                    <span style="color: #666; font-size: 13px;">距离</span>
+                    <span style="font-weight: 600; color: #333;">${item.title}</span>
+                    <span style="color: #666; font-size: 13px;">还有</span>
+                    <span class="countdown-time">${timeStr}</span>
+                `;
+                div.onclick = () => openCountdownModal(item.id, item.title, item.targetDate);
+
+                // Insert before the add button
+                countdownArea.insertBefore(div, countdownArea.lastElementChild);
+            });
+        };
+
+        const startCountdownListener = (uid) => {
+            if (countdownUnsubscribe) countdownUnsubscribe();
+            const q = query(collection(db, `users/${uid}/countdowns`), orderBy('createdAt', 'asc'));
+
+            countdownUnsubscribe = onSnapshot(q, (snap) => {
+                countdownsData = [];
+                snap.forEach(d => {
+                    countdownsData.push({ id: d.id, ...d.data() });
+                });
+                renderCountdowns();
+
+                // Start timer if not running
+                if (!timerInterval) {
+                    timerInterval = setInterval(renderCountdowns, 60000); // Update every minute
+                }
+            });
+        };
+
+        const stopCountdownListener = () => {
+            if (countdownUnsubscribe) countdownUnsubscribe();
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            countdownArea.innerHTML = '<button class="countdown-add-btn" onclick="openCountdownModal()" title="添加倒计时">+</button>';
+        };
+
         // Auth Listener
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
@@ -734,6 +1043,7 @@
                 newSubjectBtn.style.display = 'block';
                 startCollectionListener();
                 setupTodoListener(user.uid);
+                startCountdownListener(user.uid); // Start Countdown
             } else {
                 // Show Login Form (Centered)
                 authContainer.style.display = 'flex';
@@ -765,6 +1075,7 @@
                 if (todoUnsubscribe) todoUnsubscribe();
                 todoList.innerHTML = '<div class="todo-empty">暂无待办</div>'; // Clear todos on logout
                 stopCollectionListener();
+                stopCountdownListener(); // Stop Countdown
                 grid.innerHTML = '';
 
                 hideLoadingMask();
@@ -840,7 +1151,7 @@
                     const link = document.createElement('a');
                     link.className = 'card';
                     link.href = cardLink;
-                    link.target = "_blank";
+                    link.target = "_self"; // Changed from _blank to _self
                     link.innerHTML = `
                         <div class="card-title">${title}</div>
                         <div class="card-round">${round} <span>轮</span></div>
