@@ -59,6 +59,10 @@
                 flex-direction: column;
             }
 
+            .left-column {
+                width: 100%;
+            }
+
             .right-column {
                 width: 100%;
             }
@@ -930,7 +934,18 @@
                 const data = docSnap.data();
                 const title = data.title || docSnap.id;
                 subjects.add(title);
-                if (data.listHtml) {
+
+                // 优先使用持久化的 dailyStats
+                if (data.dailyStats) {
+                    Object.keys(data.dailyStats).forEach(dateStr => {
+                        if (stats[dateStr]) {
+                            if (!stats[dateStr][title]) stats[dateStr][title] = 0;
+                            stats[dateStr][title] += data.dailyStats[dateStr];
+                        }
+                    });
+                }
+                // Fallback: 如果没有 dailyStats，尝试从 HTML 解析 (兼容旧数据)
+                else if (data.listHtml) {
                     try {
                         const parser = new DOMParser();
                         const docDOM = parser.parseFromString(data.listHtml, 'text/html');

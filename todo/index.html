@@ -582,6 +582,9 @@
             const progressText = document.getElementById('progress-text');
             const progressPercent = document.getElementById('progress-percent');
 
+            // New: Persistent Daily Stats
+            let dailyStats = {};
+
             // ... sound and fireworks ...
 
             // Sound Effect
@@ -641,6 +644,7 @@
                         listHtml: listContainer.innerHTML,
                         isInputHidden: inputArea.classList.contains('hidden'),
                         rawText: sourceTextArea.value,
+                        dailyStats: dailyStats, // Save persistent stats
                         updatedAt: new Date()
                     };
 
@@ -686,7 +690,15 @@
                                 }
                             }
 
+
                             if (data.rawText) sourceTextArea.value = data.rawText;
+
+                            // Load persistent stats
+                            if (data.dailyStats) {
+                                dailyStats = data.dailyStats;
+                            } else {
+                                dailyStats = {};
+                            }
 
                             // UI Logic
                             const hasValidContent = data.listHtml && data.listHtml.includes('todo-item');
@@ -780,9 +792,21 @@
                     playDing();
                     // Set timestamp for stats
                     checkbox.setAttribute('data-timestamp', Date.now());
+
+                    // Increment persistent daily stat
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    if (!dailyStats[todayStr]) dailyStats[todayStr] = 0;
+                    dailyStats[todayStr]++;
+
                 } else if (checkbox && !checkbox.checked) {
                     // Remove timestamp if unchecked
                     checkbox.removeAttribute('data-timestamp');
+
+                    // Decrement persistent daily stat (prevent negative)
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    if (dailyStats[todayStr] && dailyStats[todayStr] > 0) {
+                        dailyStats[todayStr]--;
+                    }
                 }
                 const checkboxes = document.querySelectorAll('#todo-list input[type="checkbox"]');
                 if (checkboxes.length === 0) return;
